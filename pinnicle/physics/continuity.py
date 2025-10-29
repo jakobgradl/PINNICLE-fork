@@ -147,3 +147,50 @@ class Thickness(EquationBase): #{{{
         return self._pde(nn_input_var, nn_output_var) #}}}
     #}}}
 #}}}
+
+
+
+######################
+## Dissipative-Hamiltonian Neural Network for exact mass conservation
+# {{{
+class MCHDEquationParameter(EquationParameter, Constants):
+    """ default parameters for mass conservation
+    """
+    _EQUATION_TYPE = 'MC_HD' 
+    def __init__(self, param_dict={}):
+        # load necessary constants
+        Constants.__init__(self)
+        super().__init__(param_dict)
+
+    def set_default(self):
+        self.input = ['x', 'y']
+        self.output = ['D', 'R', 'H']
+        self.output_lb = [self.variable_lb[k] for k in self.output]
+        self.output_ub = [self.variable_ub[k] for k in self.output]
+        self.data_weights = [1.0e-8*self.yts**2, 1.0e-8*self.yts**2, 1.0*self.yts**2, 1.0e-6]
+        self.residuals = ["f"+self._EQUATION_TYPE]
+        self.pde_weights = [None]
+
+        # scalar variables: name:value
+        self.scalar_variables = {}
+class MC_exact(EquationBase): #{{{
+    """ D-HNN for exact MC on 2D problem
+    """
+    _EQUATION_TYPE = 'MC_HD' 
+    def __init__(self, parameters=MCHDEquationParameter()):
+        super().__init__(parameters)
+
+    def _pde(self, nn_input_var, nn_output_var): #{{{
+        """ 
+        The continuity equation is satisfied exactly via 
+        Helmholtz decomposition of the NN output.
+        No PDE residual required.
+        """
+
+        return 0. #}}}
+    
+    def _pde_jax(self, nn_input_var, nn_output_var): #{{{
+        
+        return self._pde(nn_input_var, nn_output_var) #}}}
+    #}}}
+#}}}

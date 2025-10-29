@@ -2,7 +2,7 @@ import deepxde as dde
 import deepxde.backend as bkd
 import numpy as np
 from deepxde.backend import tf
-from .helper import minmax_scale, up_scale, fourier_feature, default_float_type
+from .helper import minmax_scale, up_scale, fourier_feature, default_float_type, transform_MC_HD, transform_SSA_HD
 from ..parameter import NNParameter
 
 class FNN:
@@ -42,8 +42,16 @@ class FNN:
                 # add input transform
                 self._add_input_transform(minmax_scale)
 
+        # transform D-HNN output to variables
+        if 'MC_HD' in self.physics.equations:
+            print("add output transform, transform (D,R,H) to (u,v,a,H)")
+            self.net.apply_output_transform(transform_MC_HD)
+        elif 'SSA_HD' in self.physics.equations:
+            print("add output transform, transform (D,R,H) to (u,v,a,H)")
+            self.net.apply_output_transform(transform_SSA_HD)
+
         # upscale the output by min-max
-        if self.parameters.is_output_scaling():
+        elif self.parameters.is_output_scaling():
             print(f"add output transform with {self.parameters.output_lb} and {self.parameters.output_ub}")
             # force the input and output lb and ub to be tensors
             if bkd.backend_name == "pytorch":
