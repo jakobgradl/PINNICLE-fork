@@ -185,7 +185,7 @@ class PINN:
 
         # start training
         self._loss_history, self._train_state = self.model.train(iterations=iterations,
-                display_every=10000, disregard_previous_best=True, callbacks=callbacks)
+                display_every=100, disregard_previous_best=True, callbacks=callbacks)
         
         # prepare history
         self.history = History(self._loss_history, self.loss_names)
