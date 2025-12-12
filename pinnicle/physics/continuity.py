@@ -360,12 +360,13 @@ class MCMOLHOEquationParameter(EquationParameter, Constants):
         self.output_lb = [self.variable_lb[k] for k in self.output]
         self.output_ub = [self.variable_ub[k] for k in self.output]
         # self.data_weights = [1.0, 1.0, 1.0, 1.0e-6]
-        self.data_weights = [1.0, 1.0e-6, 1.0]
+        self.data_weights = [1.0, 1.0e-6, 1.0]#, 1.0]
         self.residuals = []
         self.pde_weights = []
 
         # scalar variables: name:value
-        self.scalar_variables = {'n': 3.0,}
+        self.scalar_variables = {'n': 3.0}
+        # self.scalar_variables = {}
 class MC_MOLHO(EquationBase): #{{{
     """ MC on 2D problem
 
