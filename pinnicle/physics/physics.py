@@ -219,6 +219,45 @@ class Physics:
         vel = ppow((bkd.square(u) + bkd.square(v) + 1.0e-30), 0.5)
         return vel
     
+    def vel_mag_MC_MOLHO(self, nn_input_var, nn_output_var, X):
+        """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
+
+        Args: 
+            nn_input_var:  input tensor to the nn
+            nn_output_var: output tensor from the nn
+            X:  NumPy array of the collocation points defined on the boundary, required by deepxde
+        """
+        u = self.u_MC_MOLHO(nn_input_var,nn_output_var, X)
+        v = self.v_MC_MOLHO(nn_input_var,nn_output_var, X)
+        vel = ppow((bkd.square(u) + bkd.square(v) + 1.0e-30), 0.5)
+        return vel
+    
+    def vel_base_mag_MC_MOLHO(self, nn_input_var, nn_output_var, X):
+        """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
+
+        Args: 
+            nn_input_var:  input tensor to the nn
+            nn_output_var: output tensor from the nn
+            X:  NumPy array of the collocation points defined on the boundary, required by deepxde
+        """
+        p = self.p_to_01(nn_input_var,nn_output_var)
+        vel = self.vel_mag_MC_MOLHO(nn_input_var,nn_output_var, X)
+        vel_base = vel * p
+        return vel_base
+    
+    def vel_shear_mag_MC_MOLHO(self, nn_input_var, nn_output_var, X):
+        """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
+
+        Args: 
+            nn_input_var:  input tensor to the nn
+            nn_output_var: output tensor from the nn
+            X:  NumPy array of the collocation points defined on the boundary, required by deepxde
+        """
+        p = self.p_to_01(nn_input_var,nn_output_var)
+        vel = self.vel_mag_MC_MOLHO(nn_input_var,nn_output_var, X)
+        vel_shear = vel * (1.-p)
+        return vel_shear
+    
     def dH_MC(self, nn_input_var, nn_output_var, X):
         """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
         """
@@ -251,9 +290,12 @@ class Physics:
         p = bkd.sigmoid(p1) # p in [0,1]
         if 'n' in self.output_var:
             nid = self.output_var.index('n')
-            n = slice_column(nn_output_var, nid)
+            n1 = slice_column(nn_output_var, nid)
+            a = 5.
+            b = 1.8
+            n = (a-b) * bkd.sigmoid(n1) + b
         else:
-            n = self.n
+            n = 3.0 # self.n
         ubar = self.DR_to_u(nn_input_var,nn_output_var)
         q = 1. - p
         f = (n+1.)/(n+2.)
@@ -268,11 +310,31 @@ class Physics:
         p = bkd.sigmoid(p1) # p in [0,1]
         if 'n' in self.output_var:
             nid = self.output_var.index('n')
-            n = slice_column(nn_output_var, nid)
+            n1 = slice_column(nn_output_var, nid)
+            a = 5.
+            b = 1.8
+            n = (a-b) * bkd.sigmoid(n1) + b
         else:
-            n = self.n
+            n = 3.0 # self.n
         vbar = self.DR_to_v(nn_input_var,nn_output_var)
         q = 1. - p
         f = (n+1.)/(n+2.)
         v = vbar * (p+f*q)**-1.
         return v
+
+    def p_to_01(self, nn_input_var, nn_output_var):
+        """constrain p to [0,1]
+        """
+        pid = self.output_var.index('p')
+        p1 = slice_column(nn_output_var, pid)
+        p = bkd.sigmoid(p1) # p in [0,1]
+        return p
+    
+    def n_to_range(self, nn_input_var, nn_output_var):
+        """constrain n to [1.8, 8.0]
+        """
+        nid = self.output_var.index('n')
+        n = slice_column(nn_output_var, nid)
+        a = 5.
+        b = 1.8
+        return (a-b) * bkd.sigmoid(n) + b
