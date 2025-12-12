@@ -389,9 +389,7 @@ class MC_MOLHO(EquationBase): #{{{
             nn_input_var: global input to the nn
             nn_output_var: global output from the nn
         """
-        Hid = self.local_output_var["H"]
-        H = slice_column(nn_output_var, Hid)
-
+        
         return [] #}}}
     
     def _pde_jax(self, nn_input_var, nn_output_var): #{{{
