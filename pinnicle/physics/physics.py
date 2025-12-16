@@ -241,8 +241,11 @@ class Physics:
             X:  NumPy array of the collocation points defined on the boundary, required by deepxde
         """
         p = self.p_to_01(nn_input_var,nn_output_var)
-        vel = self.vel_mag_MC_MOLHO(nn_input_var,nn_output_var, X)
-        vel_base = vel * p
+        usurf = self.u_MC_MOLHO(nn_input_var, nn_output_var, X)
+        vsurf = self.v_MC_MOLHO(nn_input_var, nn_output_var, X)
+        ubase = usurf * p
+        vbase = vsurf * p
+        vel_base = ppow((bkd.square(ubase) + bkd.square(vbase) + 1.0e-30), 0.5)
         return vel_base
     
     def vel_shear_mag_MC_MOLHO(self, nn_input_var, nn_output_var, X):
@@ -254,8 +257,11 @@ class Physics:
             X:  NumPy array of the collocation points defined on the boundary, required by deepxde
         """
         p = self.p_to_01(nn_input_var,nn_output_var)
-        vel = self.vel_mag_MC_MOLHO(nn_input_var,nn_output_var, X)
-        vel_shear = vel * (1.-p)
+        usurf = self.u_MC_MOLHO(nn_input_var, nn_output_var, X)
+        vsurf = self.v_MC_MOLHO(nn_input_var, nn_output_var, X)
+        ushear = usurf * (1.-p)
+        vshear = vsurf * (1.-p)
+        vel_shear = ppow((bkd.square(ushear) + bkd.square(vshear) + 1.0e-30), 0.5)
         return vel_shear
     
     def dH_MC(self, nn_input_var, nn_output_var, X):
