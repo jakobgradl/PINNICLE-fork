@@ -344,3 +344,10 @@ class Physics:
         a = 5.
         b = 1.8
         return (a-b) * bkd.sigmoid(n) + b
+    
+    def mf_mag(self, nn_input_var, nn_output_var,X):
+        """compute the mass flux magnitude
+        """
+        u = self.DR_to_u(nn_input_var,nn_output_var,X)
+        v = self.DR_to_v(nn_input_var,nn_output_var,X)
+        return ppow((bkd.square(u) + bkd.square(v) + 1.0e-30), 0.5)
