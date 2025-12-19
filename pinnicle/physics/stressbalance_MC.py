@@ -63,6 +63,15 @@ class SSA_MC(EquationBase): #{{{
             B = slice_column(nn_output_var, Bid)
         else:
             B = self.B
+
+        if 'n' in self.local_output_var:
+            nid = self.local_output_var['n']
+            n = slice_column(nn_output_var, nid)
+            a = 5.
+            b = 1.8
+            n = (a-b) * bkd.sigmoid(n) + b
+        else:
+            n = self.n
         
         # recovering u,v
         R_x = jacobian(nn_output_var, nn_input_var, i=Rid, j=xid)
