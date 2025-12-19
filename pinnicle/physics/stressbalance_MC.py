@@ -54,7 +54,7 @@ class SSA_MC(EquationBase): #{{{
         Cid = self.local_output_var["C"]
 
         # unpacking normalized output
-        s = slice_column(nn_output_var, sid)
+        # s = slice_column(nn_output_var, sid)
         H = slice_column(nn_output_var, Hid)
         C = slice_column(nn_output_var, Cid)
 
@@ -121,20 +121,6 @@ class SSA_MC(EquationBase): #{{{
 
         return [f1, f2] #}}}
     
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
     def _pde_jax(self, nn_input_var, nn_output_var): #{{{
         """ residual of SSA 2D PDEs
 
@@ -142,62 +128,7 @@ class SSA_MC(EquationBase): #{{{
             nn_input_var: global input to the nn
             nn_output_var: global output from the nn
         """
-        # get the ids
-        xid = self.local_input_var["x"]
-        yid = self.local_input_var["y"]
-
-        Did = self.local_output_var["D"]
-        Rid = self.local_output_var["R"]
-        sid = self.local_output_var["s"]
-        Hid = self.local_output_var["H"]
-        taubid = self.local_output_var["taub"]
-
-        # unpacking normalized output
-        H = slice_column(nn_output_var, Hid)
-        taub = slice_column(nn_output_var, taubid)
-        
-        # recovering u,v,a
-        D_x = jacobian(nn_output_var, nn_input_var, i=Did, j=xid)
-        D_y = jacobian(nn_output_var, nn_input_var, i=Did, j=yid)
-        R_x = jacobian(nn_output_var, nn_input_var, i=Rid, j=xid)
-        R_y = jacobian(nn_output_var, nn_input_var, i=Rid, j=yid)
-
-        # a = D_x + D_y ## == div(Hv)
-        u = (D_x - R_y) / H
-        v = (D_y + R_x) / H
-
-        # get the spatial derivatives functions
-        u_x = jacobian(u, nn_input_var, i=0, j=xid, val=1)
-        v_x = jacobian(v, nn_input_var, i=0, j=xid, val=1)
-        u_y = jacobian(u, nn_input_var, i=0, j=yid, val=1)
-        v_y = jacobian(v, nn_input_var, i=0, j=yid, val=1)
-
-        # get variable function
-        H_func = lambda x: slice_function_jax(nn_output_var, x, Hid)
-        # stress tensor
-        etaH = lambda x: 0.5*H_func(x)*self.B *(u_x(x)**2.0 + v_y(x)**2.0 + 0.25*(u_y(x)+v_x(x))**2.0 + u_x(x)*v_y(x)+self.eps)**(0.5*(1.0-self.n)/self.n)
-
-        B11 = lambda x: etaH(x)*(4*u_x(x) + 2*v_y(x))
-        B22 = lambda x: etaH(x)*(4*v_y(x) + 2*u_x(x))
-        B12 = lambda x: etaH(x)*(  u_y(x) +   v_x(x))
-
-        # Getting the other derivatives
-        sigma11 = jacobian((jax.vmap(B11)(nn_input_var), B11), nn_input_var, i=0, j=xid)
-        sigma12 = jacobian((jax.vmap(B12)(nn_input_var), B12), nn_input_var, i=0, j=yid)
-
-        sigma21 = jacobian((jax.vmap(B12)(nn_input_var), B12), nn_input_var, i=0, j=xid)
-        sigma22 = jacobian((jax.vmap(B22)(nn_input_var), B22), nn_input_var, i=0, j=yid)
-
-        # compute the basal stress
-        s_x = jacobian(nn_output_var, nn_input_var, i=sid, j=xid)
-        s_y = jacobian(nn_output_var, nn_input_var, i=sid, j=yid)
-
-        u_norm = (u**2+v**2+self.eps**2)**0.5
-
-        f1 = sigma11 + sigma12 - abs(taub)*u/(u_norm) - self.rhoi*self.g*H*s_x
-        f2 = sigma21 + sigma22 - abs(taub)*v/(u_norm) - self.rhoi*self.g*H*s_y
-
-        return [f1, f2] #}}}
+        pass
     #}}}
 #}}}
 
