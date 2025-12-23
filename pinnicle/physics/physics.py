@@ -156,8 +156,8 @@ class Physics:
         if "D_smb" in self.output_var:
             # for MC_exact
             Did = self.output_var.index('D_smb')
-            DdH_x = jacobian(nn_output_var, nn_input_var, i=Did, j=xid)
-            DdH_y = jacobian(nn_output_var, nn_input_var, i=Did, j=yid)
+            Dsmb_x = jacobian(nn_output_var, nn_input_var, i=Did, j=xid)
+            Dsmb_y = jacobian(nn_output_var, nn_input_var, i=Did, j=yid)
         else:
             # for MCSteady_exact
             Dsmb_x = R_x*1e-32
