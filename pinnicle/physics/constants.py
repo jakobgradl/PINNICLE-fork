@@ -31,3 +31,7 @@ class Constants():
         self.variable_ub['D_smb'] = 1e3
         self.variable_lb['R'] = -1e3
         self.variable_ub['R'] = 1e3
+        self.variable_lb['p'] = 0.
+        self.variable_ub['p'] = 1e0
+        self.variable_lb['n'] = -5.
+        self.variable_ub['n'] = 5. 
