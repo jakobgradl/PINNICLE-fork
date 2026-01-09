@@ -218,15 +218,10 @@ class Physics:
         return vel
     
     def u_MOLHO(self, nn_input_var, nn_output_var, boundary=False):
-        """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
+        """ compute MOLHO surface velocity from depth-averaged velocity
         """
-        pid = self.output_var.index('p')
-        p1 = slice_column(nn_output_var, pid)
-        p = bkd.sigmoid(p1) # p in [0,1]
-        if 'n' in self.output_var:
-            n = self.n_to_range(nn_input_var,nn_output_var)
-        else:
-            n = 3.0 # self.n
+        p = self.p_to_01(nn_input_var,nn_output_var)
+        n = self.get_n(nn_input_var,nn_output_var)
         ubar = self.Hu_to_ubar(nn_input_var,nn_output_var,boundary)
         q = 1. - p
         f = (n+1.)/(n+2.)
@@ -234,15 +229,10 @@ class Physics:
         return usurf
     
     def v_MOLHO(self, nn_input_var, nn_output_var, boundary=False):
-        """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
+        """ compute MOLHO surface velocity from depth-averaged velocity
         """
-        pid = self.output_var.index('p')
-        p1 = slice_column(nn_output_var, pid)
-        p = bkd.sigmoid(p1) # p in [0,1]
-        if 'n' in self.output_var:
-            n = self.n_to_range(nn_input_var,nn_output_var)
-        else:
-            n = 3.0 # self.n
+        p = self.p_to_01(nn_input_var,nn_output_var)
+        n = self.get_n(nn_input_var,nn_output_var)
         vbar = self.Hv_to_vbar(nn_input_var,nn_output_var,boundary)
         q = 1. - p
         f = (n+1.)/(n+2.)
@@ -346,6 +336,15 @@ class Physics:
         p1 = slice_column(nn_output_var, pid)
         p = bkd.sigmoid(p1) # p in [0,1]
         return p
+
+    def get_n(self, nn_input_var, nn_output_var):
+        """get n from nn_output or scalar_variables
+        """
+        if 'n' in self.output_var:
+            n = self.n_to_range(nn_input_var,nn_output_var)
+        else:
+            n = self.equations[0].parameters.scalar_variables['n']
+        return n
     
     def n_to_range(self, nn_input_var, nn_output_var):
         """constrain n to [1.8, 5.0]
