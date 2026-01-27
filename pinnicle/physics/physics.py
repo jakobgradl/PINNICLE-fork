@@ -200,13 +200,13 @@ class Physics:
     def u_MC(self, nn_input_var, nn_output_var, X):
         """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
         """
-        u = self.Hu_to_ubar(nn_input_var,nn_output_var)
+        u = self.Hu_to_ubar(nn_input_var,nn_output_var,boundary=False)
         return u
     
     def v_MC(self, nn_input_var, nn_output_var, X):
         """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
         """
-        v = self.Hv_to_vbar(nn_input_var,nn_output_var)
+        v = self.Hv_to_vbar(nn_input_var,nn_output_var,boundary=False)
         return v
 
     def vel_mag_MC(self, nn_input_var, nn_output_var, X):
