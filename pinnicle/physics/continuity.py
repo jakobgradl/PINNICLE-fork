@@ -229,7 +229,7 @@ class Thickness(EquationBase): #{{{
 class MCSSAEquationParameter(EquationParameter, Constants):
     """ default parameters for mass conservation
     """
-    _EQUATION_TYPE = 'MC_exact' 
+    _EQUATION_TYPE = 'MC_SSA' 
     def __init__(self, param_dict={}):
         # load necessary constants
         Constants.__init__(self)
