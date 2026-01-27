@@ -226,7 +226,7 @@ class Thickness(EquationBase): #{{{
 
 
 # D-HNN exact mass conservation {{{
-class MCexactEquationParameter(EquationParameter, Constants):
+class MCSSAEquationParameter(EquationParameter, Constants):
     """ default parameters for mass conservation
     """
     _EQUATION_TYPE = 'MC_exact' 
@@ -246,7 +246,7 @@ class MCexactEquationParameter(EquationParameter, Constants):
 
         # scalar variables: name:value
         self.scalar_variables = {}
-class MC_exact(EquationBase): #{{{
+class MC_SSA(EquationBase): #{{{
     """ MC on 2D problem
 
         for domains with negligible smb and dH/dt
@@ -254,8 +254,8 @@ class MC_exact(EquationBase): #{{{
         u,v,a are defined based on two scalar fields D,R
         in a way that automatically satisfies the MC
     """
-    _EQUATION_TYPE = 'MC_exact' 
-    def __init__(self, parameters=MCexactEquationParameter()):
+    _EQUATION_TYPE = 'MC_SSA' 
+    def __init__(self, parameters=MCSSAEquationParameter()):
         super().__init__(parameters)
 
     def _pde(self, nn_input_var, nn_output_var): #{{{
