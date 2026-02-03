@@ -23,10 +23,10 @@ class MOLHOMCEquationParameter(EquationParameter, Constants):
 
     def set_default(self):
         self.input = ['x', 'y']
-        self.output = ['u', 'v', 'u_base', 'v_base', 's', 'H', 'C']
+        self.output = ['D_smb', 'D_dH', 'R', 'H', 's', 'C', 'p']
         self.output_lb = [self.variable_lb[k] for k in self.output]
         self.output_ub = [self.variable_ub[k] for k in self.output]
-        self.data_weights = [1.0e-8*self.yts**2.0, 1.0e-8*self.yts**2.0, 1.0e-8*self.yts**2.0, 1.0e-8*self.yts**2.0, 1.0e-6, 1.0e-6, 1.0e-8]
+        self.data_weights = [1.0]*3 + [1.0e-6, 1.0e-6, 1.0e-8, 1.0]
         self.residuals = ["f"+self._EQUATION_TYPE+" 1", "f"+self._EQUATION_TYPE+" 2", "f"+self._EQUATION_TYPE+" base 1", "f"+self._EQUATION_TYPE+" base 2"]
         self.pde_weights = [1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10]
 
