@@ -267,25 +267,61 @@ class Physics:
         vel = ppow((bkd.square(u) + bkd.square(v) + 1.0e-30), 0.5)
         return vel
     
-    def vel_base_mag_MC_MOLHO(self, nn_input_var, nn_output_var, X):
-        """ compute basal velocity magnitude (MOLHO)
+    def u_base_MC_MOLHO(self, nn_input_var, nn_output_var, X):
+        """compute basal velocity u component (MOLHO)
         """
         p = self.p_to_01(nn_input_var,nn_output_var)
         usurf = self.u_MC_MOLHO(nn_input_var, nn_output_var, X)
-        vsurf = self.v_MC_MOLHO(nn_input_var, nn_output_var, X)
         ubase = usurf * p
+        return ubase
+    
+    def v_base_MC_MOLHO(self, nn_input_var, nn_output_var, X):
+        """compute basal velocity v component (MOLHO)
+        """
+        p = self.p_to_01(nn_input_var,nn_output_var)
+        vsurf = self.v_MC_MOLHO(nn_input_var, nn_output_var, X)
         vbase = vsurf * p
+        return vbase
+    
+    def vel_base_mag_MC_MOLHO(self, nn_input_var, nn_output_var, X):
+        """ compute basal velocity magnitude (MOLHO)
+        """
+        # p = self.p_to_01(nn_input_var,nn_output_var)
+        # usurf = self.u_MC_MOLHO(nn_input_var, nn_output_var, X)
+        # vsurf = self.v_MC_MOLHO(nn_input_var, nn_output_var, X)
+        # ubase = usurf * p
+        # vbase = vsurf * p
+        ubase = self.u_base_MC_MOLHO(nn_input_var, nn_output_var, X)
+        vbase = self.v_base_MC_MOLHO(nn_input_var, nn_output_var, X)
         vel_base = ppow((bkd.square(ubase) + bkd.square(vbase) + 1.0e-30), 0.5)
         return vel_base
+    
+    def u_shear_MC_MOLHO(self, nn_input_var, nn_output_var, X):
+        """compute shear velocity u component (MOLHO)
+        """
+        p = self.p_to_01(nn_input_var,nn_output_var)
+        usurf = self.u_MC_MOLHO(nn_input_var, nn_output_var, X)
+        ushear = usurf * (1.-p)
+        return ushear
+    
+    def v_shear_MC_MOLHO(self, nn_input_var, nn_output_var, X):
+        """compute shear velocity v component (MOLHO)
+        """
+        p = self.p_to_01(nn_input_var,nn_output_var)
+        vsurf = self.v_MC_MOLHO(nn_input_var, nn_output_var, X)
+        vshear = vsurf * (1.-p)
+        return vshear
     
     def vel_shear_mag_MC_MOLHO(self, nn_input_var, nn_output_var, X):
         """ compute shear velocity magnitude (MOLHO)
         """
-        p = self.p_to_01(nn_input_var,nn_output_var)
-        usurf = self.u_MC_MOLHO(nn_input_var, nn_output_var, X)
-        vsurf = self.v_MC_MOLHO(nn_input_var, nn_output_var, X)
-        ushear = usurf * (1.-p)
-        vshear = vsurf * (1.-p)
+        # p = self.p_to_01(nn_input_var,nn_output_var)
+        # usurf = self.u_MC_MOLHO(nn_input_var, nn_output_var, X)
+        # vsurf = self.v_MC_MOLHO(nn_input_var, nn_output_var, X)
+        # ushear = usurf * (1.-p)
+        # vshear = vsurf * (1.-p)
+        ushear = self.u_shear_MC_MOLHO(nn_input_var, nn_output_var, X)
+        vshear = self.v_shear_MC_MOLHO(nn_input_var, nn_output_var, X)
         vel_shear = ppow((bkd.square(ushear) + bkd.square(vshear) + 1.0e-30), 0.5)
         return vel_shear
     
