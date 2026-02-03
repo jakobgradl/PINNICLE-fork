@@ -212,8 +212,8 @@ class Physics:
     def vel_mag_MC(self, nn_input_var, nn_output_var, X):
         """ compute surface velocity magnitude (SSA)
         """
-        u = self.DR_to_ubar(nn_input_var,nn_output_var)
-        v = self.DR_to_vbar(nn_input_var,nn_output_var)
+        u = self.u_MC(nn_input_var,nn_output_var,X)
+        v = self.v_MC(nn_input_var,nn_output_var,X)
         vel = ppow((bkd.square(u) + bkd.square(v) + 1.0e-30), 0.5)
         return vel
     
