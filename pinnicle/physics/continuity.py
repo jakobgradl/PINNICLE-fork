@@ -240,7 +240,7 @@ class MCSSAEquationParameter(EquationParameter, Constants):
         self.output = ['D_smb','D_dH','R', 'H']
         self.output_lb = [self.variable_lb[k] for k in self.output]
         self.output_ub = [self.variable_ub[k] for k in self.output]
-        self.data_weights = [1.0, 1.0, 1.0, 1.0e-6]
+        self.data_weights = [1.0, 1.0, 1.0, 1.0e-3]
         self.residuals = []
         self.pde_weights = []
 
@@ -300,7 +300,7 @@ class MCSteadyexactEquationParameter(EquationParameter, Constants):
         self.output = ['R', 'H']
         self.output_lb = [self.variable_lb[k] for k in self.output]
         self.output_ub = [self.variable_ub[k] for k in self.output]
-        self.data_weights = [1.0, 1.0e-6]
+        self.data_weights = [1.0, 1.0e-3]
         self.residuals = []
         self.pde_weights = []
 
@@ -353,12 +353,10 @@ class MCMOLHOEquationParameter(EquationParameter, Constants):
 
     def set_default(self):
         self.input = ['x', 'y']
-        # self.output = ['D_smb','D_dH','R', 'H']
         self.output = ['D_smb', 'D_dH', 'R', 'H', 'p']#, 'n']
         self.output_lb = [self.variable_lb[k] for k in self.output]
         self.output_ub = [self.variable_ub[k] for k in self.output]
-        # self.data_weights = [1.0, 1.0, 1.0, 1.0e-6]
-        self.data_weights = [1.0]*3 + [1.0e-6, 1.0]#, 1.0]
+        self.data_weights = [1.0]*3 + [1.0e-3, 1.0]#, 1.0]
         self.residuals = []
         self.pde_weights = []
 
