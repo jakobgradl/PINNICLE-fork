@@ -1,0 +1,1 @@
+{"epochs": 1000, "num_neurons": 20, "num_layers": 6, "shapefile": "Helheim.exp", "num_collocation_points": 9000, "equations": {"SSA_VB": {}, "ReguRangaCB": {}}, "data": {"ISSM": {"data_size": {"u": 4000, "v": 4000, "s": 4000, "H": 4000, "C": null, "B": null}, "data_path": "Helheim.mat"}}}
