@@ -8,4 +8,5 @@ from .stressbalance import *
 from .iceshelf import *
 from .timeinvariant import *
 from .friction import *
+from .boundaryconditions import *
 from .regularization import *
