@@ -9,3 +9,4 @@ from .stressbalance_MC import *
 from .iceshelf import *
 from .timeinvariant import *
 from .friction import *
+from .boundaryconditions import *
