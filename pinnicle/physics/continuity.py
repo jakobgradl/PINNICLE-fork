@@ -286,10 +286,10 @@ class MC_SSA(EquationBase): #{{{
 
 
 # D-HNN exact mass conservation {{{
-class MCSteadyexactEquationParameter(EquationParameter, Constants):
+class MCSSASteadyEquationParameter(EquationParameter, Constants):
     """ default parameters for mass conservation
     """
-    _EQUATION_TYPE = 'MCSteady_exact' 
+    _EQUATION_TYPE = 'MC_SSA_steady' 
     def __init__(self, param_dict={}):
         # load necessary constants
         Constants.__init__(self)
@@ -306,7 +306,7 @@ class MCSteadyexactEquationParameter(EquationParameter, Constants):
 
         # scalar variables: name:value
         self.scalar_variables = {}
-class MCSteady_exact(EquationBase): #{{{
+class MC_SSA_steady(EquationBase): #{{{
     """ MC on 2D problem
 
         for domains with negligible smb and dH/dt
@@ -314,8 +314,8 @@ class MCSteady_exact(EquationBase): #{{{
         u,v,a are defined based on two scalar fields D,R
         in a way that automatically satisfies the MC
     """
-    _EQUATION_TYPE = 'MCSteady_exact' 
-    def __init__(self, parameters=MCSteadyexactEquationParameter()):
+    _EQUATION_TYPE = 'MC_SSA_steady' 
+    def __init__(self, parameters=MCSSASteadyEquationParameter()):
         super().__init__(parameters)
 
     def _pde(self, nn_input_var, nn_output_var): #{{{
