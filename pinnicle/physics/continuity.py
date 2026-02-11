@@ -418,7 +418,7 @@ class MCMOLHOESteadyquationParameter(EquationParameter, Constants):
         self.output_lb = [self.variable_lb[k] for k in self.output]
         self.output_ub = [self.variable_ub[k] for k in self.output]
         # self.data_weights = [1.0, 1.0, 1.0, 1.0e-6]
-        self.data_weights = [1.0]*1 + [1.0e-6, 1.0]#, 1.0]
+        self.data_weights = [1.0]*1 + [1.0e-3, 1.0]#, 1.0]
         self.residuals = []
         self.pde_weights = []
 
