@@ -409,3 +409,35 @@ class Physics:
         Hu = self.DR_to_Hu(nn_input_var,nn_output_var,boundary=False)
         Hv = self.DR_to_Hv(nn_input_var,nn_output_var,boundary=False)
         return ppow((bkd.square(Hu) + bkd.square(Hv) + 1.0e-30), 0.5)
+
+## 5) boundary conditions
+
+    def p_BC(self, nn_input_var, nn_output_var, X):
+        """BC on p
+        """
+        f1 = self.p_vub(nn_input_var,nn_output_var,X)
+        f2 = self.p_vlb(nn_input_var,nn_output_var,X)
+
+        return f1 + f2
+    
+    def p_vub(self, nn_input_var, nn_output_var, X):
+        """BC on p
+           promote p=0 below specified velocity (vlb) on boundary
+        """
+        p = self.p_to_01(nn_input_var,nn_output_var) 
+        vel = self.vel_mag_MC_MOLHO(nn_input_var, nn_output_var, X)
+
+        vub = self.equations[0].parameters.scalar_variables['vub']
+
+        return bkd.relu(vel-vub) * (1. - p)
+    
+    def p_vlb(self, nn_input_var, nn_output_var, X):
+        """BC on p
+           promote p=0 below specified velocity (vlb) on boundary
+        """
+        p = self.p_to_01(nn_input_var,nn_output_var) 
+        vel = self.vel_mag_MC_MOLHO(nn_input_var, nn_output_var, X)
+
+        vlb = self.equations[0].parameters.scalar_variables['vlb']
+
+        return bkd.relu(-1.*(vel-vlb)) * p
