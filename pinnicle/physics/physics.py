@@ -142,7 +142,7 @@ class Physics:
 
 ## 1) velocity
 
-    def DR_xy(self, nn_input_var, nn_output_var, boundary):
+    def DR_xy(self, nn_input_var, nn_output_var):
         """ transform D,R scalar fields of mass-conserving stressbalance
             to u,v,dHdt,smb
         """
@@ -154,7 +154,7 @@ class Physics:
         R_x = jacobian(nn_output_var, nn_input_var, i=Rid, j=xid)
         R_y = jacobian(nn_output_var, nn_input_var, i=Rid, j=yid)
         
-        if "D_dH" in self.output_var and boundary==False:
+        if "D_dH" in self.output_var:
             # for MC_exact
             Did = self.output_var.index('D_dH')
             DdH_x = jacobian(nn_output_var, nn_input_var, i=Did, j=xid)
@@ -164,7 +164,7 @@ class Physics:
             DdH_x = R_x*1e-32
             DdH_y = R_y*1e-32
 
-        if "D_smb" in self.output_var and boundary==False:
+        if "D_smb" in self.output_var:
             # for MC_exact
             Did = self.output_var.index('D_smb')
             Dsmb_x = jacobian(nn_output_var, nn_input_var, i=Did, j=xid)
@@ -176,48 +176,48 @@ class Physics:
 
         return [Dsmb_x, Dsmb_y, DdH_x, DdH_y, R_x, R_y]
     
-    def DR_to_Hu(self, nn_input_var, nn_output_var, boundary):
+    def DR_to_Hu(self, nn_input_var, nn_output_var):
         """ recover mass-flux (Hu) from scalar fields D,R
         """
-        Dsmb_x, _, DdH_x, _, _, R_y = self.DR_xy(nn_input_var,nn_output_var, boundary)
+        Dsmb_x, _, DdH_x, _, _, R_y = self.DR_xy(nn_input_var,nn_output_var)
         Hu = (Dsmb_x + DdH_x - R_y)
         return Hu
 
-    def DR_to_Hv(self, nn_input_var, nn_output_var, boundary):
+    def DR_to_Hv(self, nn_input_var, nn_output_var):
         """ recover mass-flux (Hv) from scalar fields D,R
         """
-        _, Dsmb_y, _, DdH_y, R_x, _ = self.DR_xy(nn_input_var,nn_output_var, boundary)
+        _, Dsmb_y, _, DdH_y, R_x, _ = self.DR_xy(nn_input_var,nn_output_var)
         Hv = (Dsmb_y + DdH_y + R_x)
         return Hv
     
-    def Hu_to_ubar(self, nn_input_var, nn_output_var, boundary):
+    def Hu_to_ubar(self, nn_input_var, nn_output_var):
         """ get depth-averaged velocity (ubar) from mass flux
         """
         Hid = self.output_var.index('H')
         H = slice_column(nn_output_var, Hid)
-        Hu = self.DR_to_Hu(nn_input_var,nn_output_var, boundary)
+        Hu = self.DR_to_Hu(nn_input_var,nn_output_var)
         ubar = Hu / H
         return ubar
     
-    def Hv_to_vbar(self, nn_input_var, nn_output_var, boundary):
+    def Hv_to_vbar(self, nn_input_var, nn_output_var):
         """ get depth-averaged velocity (vbar) from mass flux
         """
         Hid = self.output_var.index('H')
         H = slice_column(nn_output_var, Hid)
-        Hv = self.DR_to_Hv(nn_input_var,nn_output_var, boundary)
+        Hv = self.DR_to_Hv(nn_input_var,nn_output_var)
         vbar = Hv / H
         return vbar
     
     def u_MC(self, nn_input_var, nn_output_var, X):
         """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
         """
-        u = self.Hu_to_ubar(nn_input_var,nn_output_var,boundary=False)
+        u = self.Hu_to_ubar(nn_input_var,nn_output_var)
         return u
     
     def v_MC(self, nn_input_var, nn_output_var, X):
         """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
         """
-        v = self.Hv_to_vbar(nn_input_var,nn_output_var,boundary=False)
+        v = self.Hv_to_vbar(nn_input_var,nn_output_var)
         return v
 
     def vel_mag_MC(self, nn_input_var, nn_output_var, X):
@@ -228,23 +228,23 @@ class Physics:
         vel = ppow((bkd.square(u) + bkd.square(v) + 1.0e-30), 0.5)
         return vel
     
-    def u_MOLHO(self, nn_input_var, nn_output_var, boundary=False):
+    def u_MOLHO(self, nn_input_var, nn_output_var):
         """ compute MOLHO surface velocity from depth-averaged velocity
         """
         p = self.p_to_01(nn_input_var,nn_output_var)
         n = self.get_n(nn_input_var,nn_output_var)
-        ubar = self.Hu_to_ubar(nn_input_var,nn_output_var,boundary)
+        ubar = self.Hu_to_ubar(nn_input_var,nn_output_var)
         q = 1. - p
         f = (n+1.)/(n+2.)
         usurf = ubar * (p+f*q)**-1.
         return usurf
     
-    def v_MOLHO(self, nn_input_var, nn_output_var, boundary=False):
+    def v_MOLHO(self, nn_input_var, nn_output_var):
         """ compute MOLHO surface velocity from depth-averaged velocity
         """
         p = self.p_to_01(nn_input_var,nn_output_var)
         n = self.get_n(nn_input_var,nn_output_var)
-        vbar = self.Hv_to_vbar(nn_input_var,nn_output_var,boundary)
+        vbar = self.Hv_to_vbar(nn_input_var,nn_output_var)
         q = 1. - p
         f = (n+1.)/(n+2.)
         vsurf = vbar * (p+f*q)**-1.
@@ -253,22 +253,12 @@ class Physics:
     def u_MC_MOLHO(self, nn_input_var, nn_output_var, X):
         """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
         """
-        return self.u_MOLHO(nn_input_var, nn_output_var, boundary=False)
+        return self.u_MOLHO(nn_input_var, nn_output_var)
     
     def v_MC_MOLHO(self, nn_input_var, nn_output_var, X):
         """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
         """
-        return self.v_MOLHO(nn_input_var, nn_output_var, boundary=False)
-    
-    def u_MC_MOLHO_BC(self, nn_input_var, nn_output_var, X):
-        """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
-        """
-        return self.u_MOLHO(nn_input_var, nn_output_var, boundary=True)
-    
-    def v_MC_MOLHO_BC(self, nn_input_var, nn_output_var, X):
-        """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
-        """
-        return self.v_MOLHO(nn_input_var, nn_output_var, boundary=True)
+        return self.v_MOLHO(nn_input_var, nn_output_var)
     
     def vel_mag_MC_MOLHO(self, nn_input_var, nn_output_var, X):
         """ compute surface velocity magnitude (MOLHO)
@@ -343,7 +333,7 @@ class Physics:
         """
         xid = self.input_var.index('x')
         yid = self.input_var.index('y')
-        Dsmb_x, Dsmb_y, _, _, _, _ = self.DR_xy(nn_input_var,nn_output_var,boundary=False)
+        Dsmb_x, Dsmb_y, _, _, _, _ = self.DR_xy(nn_input_var,nn_output_var)
         Dsmb_xx = jacobian(Dsmb_x, nn_input_var, i=0, j=xid)
         Dsmb_yy = jacobian(Dsmb_y, nn_input_var, i=0, j=yid)
         smb = Dsmb_xx + Dsmb_yy ## == div(Hv)
@@ -362,7 +352,7 @@ class Physics:
         """
         xid = self.input_var.index('x')
         yid = self.input_var.index('y')
-        _, _, DdH_x, DdH_y, _, _ = self.DR_xy(nn_input_var,nn_output_var,boundary=False)
+        _, _, DdH_x, DdH_y, _, _ = self.DR_xy(nn_input_var,nn_output_var)
         DdH_xx = jacobian(DdH_x, nn_input_var, i=0, j=xid)
         DdH_yy = jacobian(DdH_y, nn_input_var, i=0, j=yid)
         dH = -1. * (DdH_xx + DdH_yy) ## == div(Hv)
@@ -406,8 +396,8 @@ class Physics:
         """compute the mass flux magnitude
         """
         # vel_mag_MC * H
-        Hu = self.DR_to_Hu(nn_input_var,nn_output_var,boundary=False)
-        Hv = self.DR_to_Hv(nn_input_var,nn_output_var,boundary=False)
+        Hu = self.DR_to_Hu(nn_input_var,nn_output_var)
+        Hv = self.DR_to_Hv(nn_input_var,nn_output_var)
         return ppow((bkd.square(Hu) + bkd.square(Hv) + 1.0e-30), 0.5)
 
 ## 5) boundary conditions
