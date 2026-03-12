@@ -1,3 +1,5 @@
+import deepxde as dde
+import deepxde.backend as bkd
 from . import EquationBase, Constants
 from ..parameter import EquationParameter
 from ..utils import slice_column, jacobian
@@ -361,7 +363,10 @@ class MCMOLHOEquationParameter(EquationParameter, Constants):
         self.pde_weights = []
 
         # scalar variables: name:value
-        self.scalar_variables = {'n': 3.0}
+        self.scalar_variables = {'n': 3.0,
+                                 'vub': 200.0/self.yts,
+                                 'vlb': 25.0/self.yts,
+                                 }
         # self.scalar_variables = {}
 class MC_MOLHO(EquationBase): #{{{
     """ MC on 2D problem
@@ -373,21 +378,109 @@ class MC_MOLHO(EquationBase): #{{{
         to the surface velocity 
 
         surface velocity is derived from the depth-averaged velocity according to MOLHO
+
+        vub, vlb are upper and lower velocity bounds for BCs on p
     """
     _EQUATION_TYPE = 'MC_MOLHO' 
     def __init__(self, parameters=MCMOLHOEquationParameter()):
         super().__init__(parameters)
 
     def _pde(self, nn_input_var, nn_output_var): #{{{
-        """ no pde loss required
+        """ no pde loss required for mass conservation
             use data losses vel_mag_MC, u_MC, v_MC, a_MC
 
         Args:
             nn_input_var: global input to the nn
             nn_output_var: global output from the nn
         """
-        
         return [] #}}}
+    
+    def _pde_jax(self, nn_input_var, nn_output_var): #{{{
+        """ residual of MC 2D PDE, jax version
+
+        Args:
+            nn_input_var: global input to the nn
+            nn_output_var: global output from the nn
+        """
+        return self._pde(nn_input_var, nn_output_var) #}}}
+    #}}}
+#}}}
+
+
+# D-HNN exact mass conservation resolving vertical velocity profile through MOLHO {{{
+class REGUPEquationParameter(EquationParameter, Constants):
+    """ default parameters for mass conservation
+    """
+    _EQUATION_TYPE = 'REGU_P' 
+    def __init__(self, param_dict={}):
+        # load necessary constants
+        Constants.__init__(self)
+        super().__init__(param_dict)
+
+    def set_default(self):
+        self.input = ['x', 'y']
+        self.output = ['D_smb', 'D_dH', 'R', 'H', 'p']#, 'n']
+        self.output_lb = [self.variable_lb[k] for k in self.output]
+        self.output_ub = [self.variable_ub[k] for k in self.output]
+        self.data_weights = [1.0]*3 + [1.0e-3, 1.0]#, 1.0]
+        self.residuals = ["f"+self._EQUATION_TYPE]
+        self.pde_weights = [1.0e0]
+
+        # scalar variables: name:value
+        self.scalar_variables = {}
+class REGU_P(EquationBase): #{{{
+    """ Regularisation for MC_MOLHO
+        applies regularisation on along-flow gradient of p (non-negative)
+    """
+    _EQUATION_TYPE = 'REGU_P' 
+    def __init__(self, parameters=REGUPEquationParameter()):
+        super().__init__(parameters)
+
+    def _pde(self, nn_input_var, nn_output_var): #{{{
+        """ pde loss is used as regularisation on p
+            (penalise when p decreases along flow)
+            
+        Args:
+            nn_input_var: global input to the nn
+            nn_output_var: global output from the nn
+        """
+        xid = self.local_input_var["x"]
+        yid = self.local_input_var["y"]
+
+        Dsmbid = self.local_output_var["D_smb"]
+        DdHid = self.local_output_var["D_dH"]
+        Rid = self.local_output_var["R"]
+        pid = self.local_output_var["p"]
+        Hid = self.local_output_var["H"]
+
+        H = slice_column(nn_output_var, Hid)
+
+        p1 = slice_column(nn_output_var, pid)
+        p = bkd.sigmoid(p1) # p in [0,1]
+
+        u_mf = (jacobian(nn_output_var,nn_input_var,i=Dsmbid,j=xid) + 
+                jacobian(nn_output_var,nn_input_var,i=DdHid,j=xid) - 
+                jacobian(nn_output_var,nn_input_var,i=Rid,j=yid))
+        
+        v_mf = (jacobian(nn_output_var,nn_input_var,i=Dsmbid,j=yid) + 
+                jacobian(nn_output_var,nn_input_var,i=DdHid,j=yid) - 
+                jacobian(nn_output_var,nn_input_var,i=Rid,j=xid))
+        
+        u_bar = u_mf / H
+        v_bar = v_mf / H
+        
+        u_mag = (u_bar**2 + v_bar**2)**0.5
+        
+        p_x = jacobian(p, nn_input_var, i=0, j=xid)
+        p_y = jacobian(p, nn_input_var, i=0, j=yid)
+
+        # directional derivative of p in direction of velocity vector
+        p_dirdev = p_x*(u_mf/u_mag) + p_y*(v_mf/u_mag)
+
+        # return loss if p_dirdev is negative, zero loss otherwise
+        f = bkd.relu(-1 * p_dirdev)
+
+        return [f] #}}}
     
     def _pde_jax(self, nn_input_var, nn_output_var): #{{{
         """ residual of MC 2D PDE, jax version
