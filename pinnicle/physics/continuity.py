@@ -343,7 +343,7 @@ class MC_SSA_steady(EquationBase): #{{{
 
 
 
-# D-HNN exact mass conservation resolving vertical velocity profile through MOLHO {{{
+# D-HNN exact mass conservation resolving vertical velocity profile compatible with MOLHO {{{
 class MCMOLHOEquationParameter(EquationParameter, Constants):
     """ default parameters for mass conservation
     """
@@ -365,7 +365,7 @@ class MCMOLHOEquationParameter(EquationParameter, Constants):
         # scalar variables: name:value
         self.scalar_variables = {'n': 3.0,
                                  'vub': 200.0/self.yts,
-                                 'vlb': 25.0/self.yts,
+                                 'vlb': 30.0/self.yts,
                                  }
         # self.scalar_variables = {}
 class MC_MOLHO(EquationBase): #{{{

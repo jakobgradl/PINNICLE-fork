@@ -161,8 +161,8 @@ class Physics:
             DdH_y = jacobian(nn_output_var, nn_input_var, i=Did, j=yid)
         else:
             # for MCSteady_exact
-            DdH_x = R_x*1e-32
-            DdH_y = R_y*1e-32
+            DdH_x = 0.
+            DdH_y = 0.
 
         if "D_smb" in self.output_var:
             # for MC_exact
@@ -171,8 +171,8 @@ class Physics:
             Dsmb_y = jacobian(nn_output_var, nn_input_var, i=Did, j=yid)
         else:
             # for MCSteady_exact
-            Dsmb_x = R_x*1e-32
-            Dsmb_y = R_y*1e-32
+            Dsmb_x = 0.
+            Dsmb_y = 0.
 
         return [Dsmb_x, Dsmb_y, DdH_x, DdH_y, R_x, R_y]
     
