@@ -367,6 +367,15 @@ class Physics:
 ## 4) utils
 
     def p_to_01(self, nn_input_var, nn_output_var):
+        """get p from nn_output or scalar_variables
+        """
+        if 'p' in self.output_var:
+            p = p_from_output(nn_input_var,nn_output_var)
+        else:
+            p = self.equations[0].parameters.scalar_variables['p']
+        return p
+
+    def p_from_output(self, nn_input_var, nn_output_var):
         """constrain p to [0,1]
         """
         pid = self.output_var.index('p')
@@ -388,9 +397,10 @@ class Physics:
         """
         nid = self.output_var.index('n')
         n = slice_column(nn_output_var, nid)
-        a = 5.
-        b = 1.8
-        return (a-b) * bkd.sigmoid(n) + b
+        # a = 5.
+        # b = 1.8
+        # return (a-b) * bkd.sigmoid(n) + b
+        return 1. + bkd.exp(n)
     
     def mf_mag(self, nn_input_var, nn_output_var,X):
         """compute the mass flux magnitude
