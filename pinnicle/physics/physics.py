@@ -231,7 +231,7 @@ class Physics:
     def u_MOLHO(self, nn_input_var, nn_output_var):
         """ compute MOLHO surface velocity from depth-averaged velocity
         """
-        p = self.p_to_01(nn_input_var,nn_output_var)
+        p = self.get_p(nn_input_var,nn_output_var)
         n = self.get_n(nn_input_var,nn_output_var)
         ubar = self.Hu_to_ubar(nn_input_var,nn_output_var)
         q = 1. - p
@@ -242,7 +242,7 @@ class Physics:
     def v_MOLHO(self, nn_input_var, nn_output_var):
         """ compute MOLHO surface velocity from depth-averaged velocity
         """
-        p = self.p_to_01(nn_input_var,nn_output_var)
+        p = self.get_p(nn_input_var,nn_output_var)
         n = self.get_n(nn_input_var,nn_output_var)
         vbar = self.Hv_to_vbar(nn_input_var,nn_output_var)
         q = 1. - p
@@ -271,7 +271,7 @@ class Physics:
     def u_base_MC_MOLHO(self, nn_input_var, nn_output_var, X):
         """compute basal velocity u component (MOLHO)
         """
-        p = self.p_to_01(nn_input_var,nn_output_var)
+        p = self.get_p(nn_input_var,nn_output_var)
         usurf = self.u_MC_MOLHO(nn_input_var, nn_output_var, X)
         ubase = usurf * p
         return ubase
@@ -279,7 +279,7 @@ class Physics:
     def v_base_MC_MOLHO(self, nn_input_var, nn_output_var, X):
         """compute basal velocity v component (MOLHO)
         """
-        p = self.p_to_01(nn_input_var,nn_output_var)
+        p = self.get_p(nn_input_var,nn_output_var)
         vsurf = self.v_MC_MOLHO(nn_input_var, nn_output_var, X)
         vbase = vsurf * p
         return vbase
@@ -287,11 +287,6 @@ class Physics:
     def vel_base_mag_MC_MOLHO(self, nn_input_var, nn_output_var, X):
         """ compute basal velocity magnitude (MOLHO)
         """
-        # p = self.p_to_01(nn_input_var,nn_output_var)
-        # usurf = self.u_MC_MOLHO(nn_input_var, nn_output_var, X)
-        # vsurf = self.v_MC_MOLHO(nn_input_var, nn_output_var, X)
-        # ubase = usurf * p
-        # vbase = vsurf * p
         ubase = self.u_base_MC_MOLHO(nn_input_var, nn_output_var, X)
         vbase = self.v_base_MC_MOLHO(nn_input_var, nn_output_var, X)
         vel_base = ppow((bkd.square(ubase) + bkd.square(vbase) + 1.0e-30), 0.5)
@@ -300,7 +295,7 @@ class Physics:
     def u_shear_MC_MOLHO(self, nn_input_var, nn_output_var, X):
         """compute shear velocity u component (MOLHO)
         """
-        p = self.p_to_01(nn_input_var,nn_output_var)
+        p = self.get_p(nn_input_var,nn_output_var)
         usurf = self.u_MC_MOLHO(nn_input_var, nn_output_var, X)
         ushear = usurf * (1.-p)
         return ushear
@@ -308,7 +303,7 @@ class Physics:
     def v_shear_MC_MOLHO(self, nn_input_var, nn_output_var, X):
         """compute shear velocity v component (MOLHO)
         """
-        p = self.p_to_01(nn_input_var,nn_output_var)
+        p = self.get_p(nn_input_var,nn_output_var)
         vsurf = self.v_MC_MOLHO(nn_input_var, nn_output_var, X)
         vshear = vsurf * (1.-p)
         return vshear
@@ -316,11 +311,6 @@ class Physics:
     def vel_shear_mag_MC_MOLHO(self, nn_input_var, nn_output_var, X):
         """ compute shear velocity magnitude (MOLHO)
         """
-        # p = self.p_to_01(nn_input_var,nn_output_var)
-        # usurf = self.u_MC_MOLHO(nn_input_var, nn_output_var, X)
-        # vsurf = self.v_MC_MOLHO(nn_input_var, nn_output_var, X)
-        # ushear = usurf * (1.-p)
-        # vshear = vsurf * (1.-p)
         ushear = self.u_shear_MC_MOLHO(nn_input_var, nn_output_var, X)
         vshear = self.v_shear_MC_MOLHO(nn_input_var, nn_output_var, X)
         vel_shear = ppow((bkd.square(ushear) + bkd.square(vshear) + 1.0e-30), 0.5)
@@ -366,16 +356,16 @@ class Physics:
     
 ## 4) utils
 
-    def p_to_01(self, nn_input_var, nn_output_var):
+    def get_p(self, nn_input_var, nn_output_var):
         """get p from nn_output or scalar_variables
         """
         if 'p' in self.output_var:
-            p = p_from_output(nn_input_var,nn_output_var)
+            p = self.p_to_range(nn_input_var,nn_output_var)
         else:
             p = self.equations[0].parameters.scalar_variables['p']
         return p
 
-    def p_from_output(self, nn_input_var, nn_output_var):
+    def p_to_range(self, nn_input_var, nn_output_var):
         """constrain p to [0,1]
         """
         pid = self.output_var.index('p')
@@ -393,14 +383,14 @@ class Physics:
         return n
     
     def n_to_range(self, nn_input_var, nn_output_var):
-        """constrain n to [1.8, 5.0]
+        """constrain n to interval [a,b]
         """
         nid = self.output_var.index('n')
         n = slice_column(nn_output_var, nid)
-        # a = 5.
-        # b = 1.8
-        # return (a-b) * bkd.sigmoid(n) + b
-        return 1. + bkd.exp(n)
+        a = 1.
+        b = 100.
+        return (b-a) * bkd.sigmoid(n) + a
+        # return 1. + bkd.exp(n)
     
     def mf_mag(self, nn_input_var, nn_output_var,X):
         """compute the mass flux magnitude
@@ -424,7 +414,7 @@ class Physics:
         """BC on p
            promote p=0 below specified velocity (vlb) on boundary
         """
-        p = self.p_to_01(nn_input_var,nn_output_var) 
+        p = self.get_p(nn_input_var,nn_output_var) 
         vel = self.vel_mag_MC_MOLHO(nn_input_var, nn_output_var, X)
 
         vub = self.equations[0].parameters.scalar_variables['vub']
@@ -435,7 +425,7 @@ class Physics:
         """BC on p
            promote p=0 below specified velocity (vlb) on boundary
         """
-        p = self.p_to_01(nn_input_var,nn_output_var) 
+        p = self.get_p(nn_input_var,nn_output_var) 
         vel = self.vel_mag_MC_MOLHO(nn_input_var, nn_output_var, X)
 
         vlb = self.equations[0].parameters.scalar_variables['vlb']
