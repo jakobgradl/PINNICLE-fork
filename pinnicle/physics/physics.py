@@ -387,8 +387,8 @@ class Physics:
         """
         nid = self.output_var.index('n')
         n = slice_column(nn_output_var, nid)
-        a = 1.
-        b = 100.
+        a = self.equations[0].parameters.scalar_variables['nlb']
+        b = self.equations[0].parameters.scalar_variables['nub']
         return (b-a) * bkd.sigmoid(n) + a
         # return 1. + bkd.exp(n)
     

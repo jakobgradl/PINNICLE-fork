@@ -431,7 +431,10 @@ class MCLLIBOUTRYEquationParameter(EquationParameter, Constants):
         self.pde_weights = []
 
         # scalar variables: name:value
-        self.scalar_variables = {'p': 1e-30,
+        self.scalar_variables = {
+                                 'p': 1e-30,
+                                 'nlb': 3.,
+                                 'nub': 100.,
                                  'vub': 100.0/self.yts,
                                  'vlb': 25.0/self.yts,
                                  }
