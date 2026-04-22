@@ -5,6 +5,9 @@ from . import EquationBase
 import itertools
 from ..utils import slice_column, jacobian, ppow, default_float_type
 
+## this will need another solution
+import torch
+
 class Physics:
     """ All the physics in used as constraint in the PINN
     """
@@ -334,6 +337,19 @@ class Physics:
         """
         smb = self.DR_to_smb(nn_input_var,nn_output_var)
         return smb
+
+    def mb_MC(self, nn_input_var, nn_output_var, X):
+        """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
+        """
+        vel = self.vel_mag_MC_MOLHO(nn_input_var, nn_output_var, X)
+        threshhold = 200.
+
+        smb = self.smb_MC(nn_input_var, nn_output_var, X)
+
+        value = torch.tensor([0.])
+
+        return torch.heaviside(vel-vub,value) * smb
+
     
 ## 3) thickness change (dHdt)
 
