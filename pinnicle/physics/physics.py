@@ -342,13 +342,13 @@ class Physics:
         """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
         """
         vel = self.vel_mag_MC_MOLHO(nn_input_var, nn_output_var, X)
-        threshhold = 200.
+        threshold = 200.
 
         smb = self.smb_MC(nn_input_var, nn_output_var, X)
 
         value = torch.tensor([0.])
 
-        return torch.heaviside(vel-vub,value) * smb
+        return torch.heaviside(vel-threshold,value) * smb
 
     
 ## 3) thickness change (dHdt)
