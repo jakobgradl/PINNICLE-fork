@@ -279,6 +279,9 @@ class PINN:
                     elif d == "smb_MC":
                         training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.smb_MC,
                                                                          batch_size=min_or_none(self.params.training.mini_batch, training_data.sol[d].shape[0]), shuffle=True))
+                    elif d == "mb_MC":
+                        training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.mb_MC,
+                                                                         batch_size=min_or_none(self.params.training.mini_batch, training_data.sol[d].shape[0]), shuffle=True))
                     elif d == "u_MC":
                         training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.u_MC,
                                                                          batch_size=min_or_none(self.params.training.mini_batch, training_data.sol[d].shape[0]), shuffle=True))
