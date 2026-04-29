@@ -5,9 +5,9 @@ from . import EquationBase
 import itertools
 from ..utils import slice_column, jacobian, ppow, default_float_type
 
-from .physics_MC import MC_MOLHO
+from .physics_MCexact import MC_EXACT
 
-class Physics(MC_MOLHO):
+class Physics(MC_EXACT):
     """ All the physics in used as constraint in the PINN
     """
     def __init__(self, parameters=PhysicsParameter()):
