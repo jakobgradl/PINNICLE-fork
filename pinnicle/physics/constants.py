@@ -41,3 +41,7 @@ class Constants():
         self.variable_ub['p'] = 1e0
         self.variable_lb['n'] = -5.
         self.variable_ub['n'] = 5. 
+        self.variable_lb['Q_x'] = -1e3
+        self.variable_ub['Q_x'] = 1e3
+        self.variable_lb['Q_y'] = -1e3
+        self.variable_ub['Q_y'] = 1e3
