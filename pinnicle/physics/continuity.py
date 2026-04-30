@@ -587,6 +587,8 @@ class MCMOLHOEquationParameter(EquationParameter, Constants):
         self.output = ['D_smb', 'R', 'H', 'p']#, 'n']
         self.output_lb = [self.variable_lb[k] for k in self.output]
         self.output_ub = [self.variable_ub[k] for k in self.output]
+        self.output_lb[2] = -2.
+        self.output_ub[2] = 8.5
         # self.data_weights = [1.0]*3 + [1.0e-3, 1.0]#, 1.0]
         self.data_weights = [1.0]*2 + [1.0e-3, 1.0]#, 1.0]
         self.residuals = []

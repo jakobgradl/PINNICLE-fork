@@ -63,8 +63,9 @@ class MC_EXACT:
     def Hu_to_ubar(self, nn_input_var, nn_output_var):
         """ get depth-averaged velocity (ubar) from mass flux
         """
-        Hid = self.output_var.index('H')
-        H = slice_column(nn_output_var, Hid)
+        # Hid = self.output_var.index('H')
+        # H = slice_column(nn_output_var, Hid)
+        H = self.get_H(nn_input_var, nn_output_var)
         if 'Q_x' in self.output_var:
             QXid = self.output_var.index('Q_x')
             Hu = slice_column(nn_output_var, QXid)
@@ -76,8 +77,9 @@ class MC_EXACT:
     def Hv_to_vbar(self, nn_input_var, nn_output_var):
         """ get depth-averaged velocity (vbar) from mass flux
         """
-        Hid = self.output_var.index('H')
-        H = slice_column(nn_output_var, Hid)
+        # Hid = self.output_var.index('H')
+        # H = slice_column(nn_output_var, Hid)
+        H = self.get_H(nn_input_var, nn_output_var)
         if 'Q_y' in self.output_var:
             QYid = self.output_var.index('Q_y')
             Hv = slice_column(nn_output_var, QYid)
@@ -265,6 +267,9 @@ class MC_EXACT:
     def H_MC(self, nn_input_var, nn_output_var, X):
         """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
         """
+        return self.get_H(nn_input_var, nn_output_var)
+
+    def get_H(self, nn_input_var, nn_output_var):
         hid = self.output_var.index('H')
         h = slice_column(nn_output_var, hid)
         return bkd.exp(h)
