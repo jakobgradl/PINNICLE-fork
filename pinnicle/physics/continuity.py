@@ -306,18 +306,23 @@ class MCexactHelmholtzEquationParameter(EquationParameter, Constants):
     def set_default(self):
         self.input = ['x', 'y']
         # self.output = ['D_smb', 'D_dH', 'R', 'H', 'p']#, 'n']
-        self.output = ['D_smb', 'R', 'H', 'p']#, 'n']
+        self.output = ['D_smb', 'R', 'H'] #, 'p']#, 'n']
         self.output_lb = [self.variable_lb[k] for k in self.output]
         self.output_ub = [self.variable_ub[k] for k in self.output]
+        self.output_lb[2] = -2.
+        self.output_ub[2] = 8.5
         # self.data_weights = [1.0]*3 + [1.0e-3, 1.0]#, 1.0]
-        self.data_weights = [1.0]*2 + [1.0e-3, 1.0]#, 1.0]
+        self.data_weights = [1.0]*2 + [1.0e-3] #, 1.0]#, 1.0]
         self.residuals = []
         self.pde_weights = []
 
         # scalar variables: name:value
         self.scalar_variables = {'n': 3.0,
+                                 'p': 0.,
                                  'vub': 200.0/self.yts,
                                  'vlb': 30.0/self.yts,
+                                 'nlb': 1.,
+                                 'nub': 100.
                                  }
         # self.scalar_variables = {}
 class MC_exact_Helmholtz(EquationBase): #{{{
