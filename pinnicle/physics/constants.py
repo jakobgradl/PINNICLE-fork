@@ -39,8 +39,8 @@ class Constants():
         self.variable_ub['R'] = 1e3
         self.variable_lb['p'] = 0.
         self.variable_ub['p'] = 1e0
-        self.variable_lb['n'] = 1.
-        self.variable_ub['n'] = 100. 
+        self.variable_lb['n'] = 0.
+        self.variable_ub['n'] = 4.6 
         self.variable_lb['Q_x'] = -1e3
         self.variable_ub['Q_x'] = 1e3
         self.variable_lb['Q_y'] = -1e3
