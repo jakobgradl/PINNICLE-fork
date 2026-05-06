@@ -10,7 +10,7 @@ class MC_EXACT:
     """ all the physics used for the helmholtz decomposition of the mass-flux vector field
     """
 
-    ## 1) velocity
+    ## 1) flux to depth-avg. velocity
 
     def DR_xy(self, nn_input_var, nn_output_var):
         """ transform D,R scalar fields of mass-conserving stressbalance
@@ -87,7 +87,10 @@ class MC_EXACT:
             Hv = self.DR_to_Hv(nn_input_var,nn_output_var)
         vbar = Hv / H
         return vbar
+
+    ## 2) depth-avg. velocity to surface velocity
     
+    ### plug-flow
     def u_MC(self, nn_input_var, nn_output_var, X):
         """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
         """
@@ -107,7 +110,33 @@ class MC_EXACT:
         v = self.v_MC(nn_input_var,nn_output_var,X)
         vel = ppow((bkd.square(u) + bkd.square(v) + 1.0e-30), 0.5)
         return vel
+
+
+    ### flow with Parameterised Deformation and Sliding (PDS)
+    def u_MC_pds(self, nn_input_var, nn_output_var, X):
+        """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
+        """
+        p = self.get_p(nn_input_var,nn_output_var)
+        u = self.Hu_to_ubar(nn_input_var,nn_output_var)
+        return u/p
     
+    def v_MC_pds(self, nn_input_var, nn_output_var, X):
+        """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
+        """
+        p = self.get_p(nn_input_var,nn_output_var)
+        v = self.Hv_to_vbar(nn_input_var,nn_output_var)
+        return v/p
+
+    def vel_mag_MC_pds(self, nn_input_var, nn_output_var, X):
+        """ compute surface velocity magnitude (SSA)
+        """
+        u = self.u_MC_pds(nn_input_var,nn_output_var,X)
+        v = self.v_MC_pds(nn_input_var,nn_output_var,X)
+        vel = ppow((bkd.square(u) + bkd.square(v) + 1.0e-30), 0.5)
+        return vel
+    
+
+    ### Lliboutry model with sliding
     def u_MOLHO(self, nn_input_var, nn_output_var):
         """ compute MOLHO surface velocity from depth-averaged velocity
         """
@@ -288,7 +317,7 @@ class MC_EXACT:
         """
         pid = self.output_var.index('p')
         p1 = slice_column(nn_output_var, pid)
-        p = bkd.sigmoid(p1) # p in [0,1]
+        p = 0.5 * bkd.sigmoid(p1) + 0.5 # p in [0,1]
         return p
 
     def get_n(self, nn_input_var, nn_output_var):
