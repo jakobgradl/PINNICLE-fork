@@ -117,15 +117,15 @@ class MC_EXACT:
         """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
         """
         p = self.get_p(nn_input_var,nn_output_var)
-        u = self.Hu_to_ubar(nn_input_var,nn_output_var)
-        return u/p
+        ubar = self.Hu_to_ubar(nn_input_var,nn_output_var)
+        return ubar/p
     
     def v_MC_pds(self, nn_input_var, nn_output_var, X):
         """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
         """
         p = self.get_p(nn_input_var,nn_output_var)
-        v = self.Hv_to_vbar(nn_input_var,nn_output_var)
-        return v/p
+        vbar = self.Hv_to_vbar(nn_input_var,nn_output_var)
+        return vbar/p
 
     def vel_mag_MC_pds(self, nn_input_var, nn_output_var, X):
         """ compute surface velocity magnitude (SSA)
