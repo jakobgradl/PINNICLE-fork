@@ -45,3 +45,10 @@ class Constants():
         self.variable_ub['Q_x'] = 1e3
         self.variable_lb['Q_y'] = -1e3
         self.variable_ub['Q_y'] = 1e3
+        self.variable_lb['k'] = -5.
+        self.variable_ub['k'] = 5.
+        self.variable_lb['mu'] = -1.
+        self.variable_ub['mu'] = 1.
+        self.variable_lb['b'] = -3500.
+        self.variable_ub['b'] = 1000.
+       

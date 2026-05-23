@@ -88,9 +88,10 @@ class MC_EXACT:
         vbar = Hv / H
         return vbar
 
+    
     ## 2) depth-avg. velocity to surface velocity
     
-    ### plug-flow
+    ### 2.1) plug-flow
     def u_MC(self, nn_input_var, nn_output_var, X):
         """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
         """
@@ -112,7 +113,7 @@ class MC_EXACT:
         return vel
 
 
-    ### flow with Parameterised Deformation and Sliding (PDS)
+    ### 2.2) flow with Parameterised Deformation and Sliding (PDS)
     def u_MC_pds(self, nn_input_var, nn_output_var, X):
         """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
         """
@@ -136,7 +137,7 @@ class MC_EXACT:
         return vel
     
 
-    ### Lliboutry model with sliding
+    ### 2.3) Lliboutry model with sliding
     def u_MOLHO(self, nn_input_var, nn_output_var):
         """ compute MOLHO surface velocity from depth-averaged velocity
         """
@@ -299,12 +300,18 @@ class MC_EXACT:
         return self.get_H(nn_input_var, nn_output_var)
 
     def get_H(self, nn_input_var, nn_output_var):
+        """ define H as exp(h) (positive definite)"""
         hid = self.output_var.index('H')
         h = slice_column(nn_output_var, hid)
         return bkd.exp(h)
 
     def get_p(self, nn_input_var, nn_output_var):
-        """get p from nn_output or scalar_variables
+        """ Sliding ratio:
+            u_base = p*u_surf
+            u_shear = (1-p)*u_surf
+            p in [0,1]
+
+            get p from nn_output or scalar_variables
         """
         if 'p' in self.output_var:
             p = self.p_to_range(nn_input_var,nn_output_var)
@@ -313,7 +320,7 @@ class MC_EXACT:
         return p
 
     def p_to_range(self, nn_input_var, nn_output_var):
-        """constrain p to [0,1]
+        """ constrain p to [0,1]
         """
         pid = self.output_var.index('p')
         p1 = slice_column(nn_output_var, pid)
@@ -321,7 +328,7 @@ class MC_EXACT:
         return p
 
     def get_n(self, nn_input_var, nn_output_var):
-        """get n from nn_output or scalar_variables
+        """ get n from nn_output or scalar_variables
         """
         if 'n' in self.output_var:
             n = self.n_to_range(nn_input_var,nn_output_var)
@@ -330,7 +337,7 @@ class MC_EXACT:
         return n
     
     def n_to_range(self, nn_input_var, nn_output_var):
-        """constrain n to interval [a,b]
+        """ constrain n to interval [a,b]
         """
         nid = self.output_var.index('n')
         n = slice_column(nn_output_var, nid)
@@ -340,13 +347,51 @@ class MC_EXACT:
         return 1. + bkd.exp(n)
     
     def mf_mag(self, nn_input_var, nn_output_var,X):
-        """compute the mass flux magnitude
+        """ compute the mass flux magnitude
         """
         # vel_mag_MC * H
         Hu = self.DR_to_Hu(nn_input_var,nn_output_var)
         Hv = self.DR_to_Hv(nn_input_var,nn_output_var)
         return ppow((bkd.square(Hu) + bkd.square(Hv) + 1.0e-30), 0.5)
+    
+    def get_mu(self, nn_input_var, nn_output_var):
+        """ define mu as exp(MU) (positive definite)
+        """
+        MUid = self.output_var.index('mu')
+        MU = slice_column(nn_output_var, MUid)
+        return bkd.exp(MU)
+    
+    def get_k(self, nn_input_var, nn_output_var):
+        """ basal stress ratio: 
+            tau_b = -k*tau_d
+            k in [0,1]
 
+            get k from nn_output or scalar_variables
+        """
+        if 'k' in self.output_var:
+            k = self.k_to_range(nn_input_var,nn_output_var)
+        else:
+            k = self.equations[0].parameters.scalar_variables['k']
+        return k
+
+    def k_to_range(self, nn_input_var, nn_output_var):
+        """constrain k to [0,1]
+        """
+        kid = self.output_var.index('k')
+        k1 = slice_column(nn_output_var, kid)
+        k = bkd.sigmoid(k1) # k in [0,1]
+        return k
+
+    def get_u_base(self, nn_input_var, nn_output_var):
+        """ get the correct basal velocity for the sliding laws
+        """
+        if 'n' in self.output_var:
+            u_base = self.u_base_MC_MOLHO(nn_input_var,nn_output_var,None)
+            vel_base_mag = self.vel_base_mag_MC_MOLHO(nn_input_var,nn_output_var,None)
+        else:
+            u_base = self.u_MC(nn_input_var,nn_output_var,None)
+            vel_base_mag = self.vel_mag_MC(nn_input_var,nn_output_var,None)
+        return u_base, vel_base_mag
 
     ## 5) boundary conditions
 
@@ -381,4 +426,139 @@ class MC_EXACT:
         return bkd.relu(-1.*(vel-vlb)) * p
     
 
+    ## 6) stress balances (2d)
 
+    ### 6.1) general
+    def get_B(self, nn_input_var, nn_output_var):
+        """ define B as exp(B) (positive definite)"""
+        if 'B' in self.output_var:
+            Bid = self.output_var.index('B')
+            B = slice_column(nn_output_var, Bid)
+            B = bkd.exp(B)
+        else:
+            B = self.equations[0].parameters.scalar_variables['B']
+        return B
+    
+    def get_C(self, nn_input_var, nn_output_var):
+        """ define C as C**2 (positive definite)"""
+        Cid = self.output_var.index('C')
+        C = slice_column(nn_output_var, Cid)
+        return C**2
+    
+    def get_b(self, nn_input_var, nn_output_var):
+        """ get basal elevation b """
+        bid = self.output_var.index('b')
+        b = slice_column(nn_output_var, bid)
+        return b
+    
+    def get_s(self, nn_input_var, nn_output_var):
+        """ get surface elevation s (bed elevation plus thickness)"""
+        H = self.get_H(nn_input_var, nn_output_var)
+        b = self.get_b(nn_input_var, nn_output_var)
+        return b + H
+
+    def s_MC(self, nn_input_var, nn_output_var, X):
+        return self.get_s(nn_input_var, nn_output_var)
+        
+    def s_x(self, nn_input_var, nn_output_var):
+        xid = self.input_var.index('x')
+        s = self.get_s(nn_input_var, nn_output_var)
+        s_x = jacobian(nn_output_var, nn_input_var, i=0, j=xid)
+        return s_x
+
+    def s_y(self, nn_input_var, nn_output_var):
+        yid = self.input_var.index('y')
+        s = self.get_s(nn_input_var, nn_output_var)
+        s_y = jacobian(nn_output_var, nn_input_var, i=0, j=yid)
+        return s_y
+    
+    def tau_d_x(self, nn_input_var, nn_output_var):
+        rho = self.equations[0].parameters.scalar_variables['rho']
+        g = self.equations[0].parameters.scalar_variables['g']
+        H = self.get_H(nn_input_var,nn_output_var)
+        s_x = self.s_x(nn_input_var,nn_output_var)
+        return rho*g*H*s_x
+
+    def tau_d_y(self, nn_input_var, nn_output_var):
+        rho = self.equations[0].parameters.constants['rhoi']
+        g = self.equations[0].parameters.constants['g']
+        H = self.get_H(nn_input_var,nn_output_var)
+        s_y = self.s_y(nn_input_var,nn_output_var)
+        return rho*g*H*s_y
+
+    def tau_b_x(self, nn_input_var, nn_output_var):
+        k = self.get_k(nn_input_var,nn_output_var)
+        tau_d_x = self.tau_d_x(nn_input_var,nn_output_var)
+        return -1.*k*tau_d_x
+
+    def tau_b_y(self, nn_input_var, nn_output_var):
+        k = self.get_k(nn_input_var,nn_output_var)
+        tau_d_y = self.tau_d_y(nn_input_var,nn_output_var)
+        return -1.*k*tau_d_y
+
+    def effective_strain_rate_SSA(self, nn_input_var, nn_output_var):
+        xid = self.input_var.index('x')
+        yid = self.input_var.index('y')
+        u = self.u_MC(nn_input_var, nn_output_var, None)
+        v = self.v_MC(nn_input_var, nn_output_var, None)
+        dux = jacobian(u, nn_input_var, i=0, j=xid)
+        dvy = jacobian(v, nn_input_var, i=0, j=yid)
+        duy = jacobian(u, nn_input_var, i=0, j=yid)
+        dvx = jacobian(v, nn_input_var, i=0, j=xid)
+        return dux**2 + dvy**2 + 0.25*(duy+dvx)**2 + (dux*dvy)
+
+    ### 6.2) sliding laws
+
+    def C_Weertman(self, nn_input_var, nn_output_var):
+        """ get Weertman friction coefficient 
+        """
+        tau_b = self.tau_b_x(nn_input_var,nn_output_var)
+        u_base, vel_base_mag = self.get_u_base(nn_input_var,nn_output_var)
+        m = self.equations[0].parameters.scalar_variables['Weertman_friction_exponent']
+        return tau_b * vel_base_mag**(1.-m) * u_base 
+
+
+    ### 6.3) rheology
+
+    def B_Glen(self, nn_input_var, nn_output_var):
+        mu = self.get_mu(nn_input_var,nn_output_var)
+        n = self.equations[0].parameters.scalar_variables['n']
+        exponent = (1-n)/2*n
+        sr_eff = self.eff_strain_rate_SSA(nn_input_var,nn_output_var)
+        return 2.*mu * sr_eff**exponent
+
+    ### 6.4) SSA
+
+    def action_SSA(self, nn_input_var, nn_output_var, X):
+        return self.SSA_weak(nn_input_var, nn_output_var)
+    
+    def SSA_weak(self, nn_input_var, nn_output_var):
+        """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
+            weak-form pde loss for SSA flow model
+        """
+        ## need in output: B,C,s
+        ## need functions: get_B, get_C, get_s
+
+        n = self.equations[0].parameters.scalar_variables['n']
+        rho = self.equations[0].parameters.scalar_variables['rho']
+        g = self.equations[0].parameters.scalar_variables['g']
+        m = self.equations[0].parameters.scalar_variables['m']
+
+        H = self.get_H(nn_input_var,nn_output_var)
+        B = self.get_B(nn_input_var,nn_output_var)
+        C = self.get_C(nn_input_var,nn_output_var)
+        s = self.get_s(nn_input_var,nn_output_var)
+        u = self.u_MC(nn_input_var,nn_output_var,None)
+        v = self.v_MC(nn_input_var,nn_output_var,None)
+
+        sx = self.s_x(nn_input_var,nn_output_var)
+        sy = self.s_y(nn_input_var,nn_output_var)
+        u_mag = self.vel_mag_MC(nn_input_var,nn_output_var,None)
+        sr_eff = self.effective_strain_rate_SSA(nn_input_var, nn_output_var)
+        sr_term = sr_eff**((n+1)/2*n)
+
+        VISC = 2*n/(n+1) * H * B * sr_term
+        GRAV = rho * g * H * (sx*u + sy*v)
+        FRIC = m/(m+1) * C * u_mag**((1/m)+1)
+
+        return VISC + FRIC + GRAV
