@@ -511,7 +511,8 @@ class MC_EXACT:
         dvy = jacobian(v, nn_input_var, i=0, j=yid)
         duy = jacobian(u, nn_input_var, i=0, j=yid)
         dvx = jacobian(v, nn_input_var, i=0, j=xid)
-        return dux**2 + dvy**2 + 0.25*(duy+dvx)**2 + (dux*dvy)
+        sr = dux**2 + dvy**2 + 0.25*(duy+dvx)**2 + (dux*dvy)
+        return sr**0.5
 
     ### 6.2) sliding laws
 
@@ -561,7 +562,7 @@ class MC_EXACT:
         sy = self.s_y(nn_input_var,nn_output_var)
         u_mag = self.vel_mag_MC(nn_input_var,nn_output_var,None)
         sr_eff = self.effective_strain_rate_SSA(nn_input_var, nn_output_var)
-        sr_term = sr_eff**((n+1)/2*n)
+        sr_term = sr_eff**((1/n)+1)
 
         VISC = 2*n/(n+1) * H * B * sr_term
         GRAV = rho * g * H * (sx*u + sy*v)
