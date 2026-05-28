@@ -305,6 +305,11 @@ class PINN:
                                                                          batch_size=min_or_none(self.params.training.mini_batch, training_data.sol[d].shape[0]), shuffle=True))
                     elif d == "p_MC":
                         training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.p_MC,
+                    elif d == "s_MC":
+                        training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.s_MC,
+                                                                         batch_size=min_or_none(self.params.training.mini_batch, training_data.sol[d].shape[0]), shuffle=True))
+                    elif d == "action_SSA":
+                        training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.action_SSA,
                                                                          batch_size=min_or_none(self.params.training.mini_batch, training_data.sol[d].shape[0]), shuffle=True))
                     elif d == "sx":
                         training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.user_defined_gradient('s','x'),

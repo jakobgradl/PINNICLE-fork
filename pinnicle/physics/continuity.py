@@ -265,7 +265,11 @@ class MCexactEquationParameter(EquationParameter, Constants):
                                  'vub': 200.0/self.yts,
                                  'vlb': 30.0/self.yts,
                                  'nlb': 1.,
-                                 'nub': 100.
+                                 'nub': 100.,
+                                 'B':1.26802073401e+08,   # -8 degree C, cuffey
+                                'm': 3, # exponent of the Weertman friction law
+                                'rho':917,
+                                'g':9.81,
                                  }
         # self.scalar_variables = {}
 class MC_exact(EquationBase): #{{{
@@ -322,7 +326,11 @@ class MCexactHelmholtzEquationParameter(EquationParameter, Constants):
                                  'vub': 200.0/self.yts,
                                  'vlb': 30.0/self.yts,
                                  'nlb': 1.,
-                                 'nub': 100.
+                                 'nub': 100.,
+                                 'B':1.26802073401e+08,   # -8 degree C, cuffey
+                                'm': 3, # exponent of the Weertman friction law
+                                'rho':917,
+                                'g':9.81,
                                  }
         # self.scalar_variables = {}
 class MC_exact_Helmholtz(EquationBase): #{{{

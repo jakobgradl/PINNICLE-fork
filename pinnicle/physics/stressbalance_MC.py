@@ -8,6 +8,54 @@ from ..utils import slice_column, jacobian, slice_function_jax
 
 ################
 ################
+
+class SSAweakEquationParamter(EquationParameter, Constants):
+    """default parameters for SSA_exact
+    """
+    _EQUATION_TYPE = 'SSA_weak'
+    def __init__(self, param_dict={}):
+        Constants.__init__(self)
+        super().__init__(param_dict)
+
+    def set_default(self):
+        self.input = ['x', 'y']
+        self.output = ['b','C']#,'B']
+        self.output_lb = [self.variable_lb[k] for k in self.output]
+        self.output_ub = [self.variable_ub[k] for k in self.output]
+        self.data_weights = [1.0e-3,1.0]
+        self.residuals = []
+        self.pde_weights = []
+
+        # scalar variables: name:value
+        self.scalar_variables = {
+                'n': 3.0,               # exponent of Glen's flow law
+                'B':1.26802073401e+08,   # -8 degree C, cuffey
+                'm': 3, # exponent of the Weertman friction law
+                'rho':917,
+                'g':9.81,
+                }
+        
+class SSA_weak(EquationBase):
+    """ SSA with weak-form pde loss
+    """
+    _EQUATION_TYPE = 'SSA_weak'
+    def __init__(self, parameters=SSAweakEquationParamter()):
+        super().__init__(parameters)
+    def _pde(self, nn_input_var, nn_output_var): #{{{
+        """ no pde loss required
+        """
+        return [] 
+    
+    def _pde_jax(self, nn_input_var, nn_output_var): #{{{
+        """ 
+        """
+        pass
+
+
+
+
+
+
 # MOLHO-MC
 
 
@@ -23,7 +71,7 @@ class MOLHOMCEquationParameter(EquationParameter, Constants):
 
     def set_default(self):
         self.input = ['x', 'y']
-        self.output = ['D_smb', 'D_dH', 'R', 'H', 's', 'C', 'p']
+        self.output = ['D_smb', 'R', 'H', 's', 'C', 'p', 'n']
         self.output_lb = [self.variable_lb[k] for k in self.output]
         self.output_ub = [self.variable_ub[k] for k in self.output]
         self.data_weights = [1.0]*3 + [1.0e-6, 1.0e-6, 1.0e-8, 1.0]
