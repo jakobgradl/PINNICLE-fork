@@ -288,17 +288,26 @@ class PINN:
                     elif d == "v_MC":
                         training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.v_MC,
                                                                          batch_size=min_or_none(self.params.training.mini_batch, training_data.sol[d].shape[0]), shuffle=True))
+                    elif d == "vel_mag_MC":
+                        training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.vel_mag_MC,
+                                                                         batch_size=min_or_none(self.params.training.mini_batch, training_data.sol[d].shape[0]), shuffle=True))
                     elif d == "u_MC_pds":
                         training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.u_MC_pds,
                                                                          batch_size=min_or_none(self.params.training.mini_batch, training_data.sol[d].shape[0]), shuffle=True))
                     elif d == "v_MC_pds":
                         training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.v_MC_pds,
                                                                          batch_size=min_or_none(self.params.training.mini_batch, training_data.sol[d].shape[0]), shuffle=True))
+                    elif d == "vel_mag_MC_pds":
+                        training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.vel_mag_MC_pds,
+                                                                         batch_size=min_or_none(self.params.training.mini_batch, training_data.sol[d].shape[0]), shuffle=True))
                     elif d == "u_MC_MOLHO":
                         training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.u_MC_MOLHO,
                                                                          batch_size=min_or_none(self.params.training.mini_batch, training_data.sol[d].shape[0]), shuffle=True))
                     elif d == "v_MC_MOLHO":
                         training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.v_MC_MOLHO,
+                                                                         batch_size=min_or_none(self.params.training.mini_batch, training_data.sol[d].shape[0]), shuffle=True))
+                    elif d == "vel_mag_MC_MOLHO":
+                        training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.vel_mag_MC_MOLHO,
                                                                          batch_size=min_or_none(self.params.training.mini_batch, training_data.sol[d].shape[0]), shuffle=True))
                     elif d == "H_MC":
                         training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.H_MC,
