@@ -303,6 +303,11 @@ class MC_EXACT:
         h = slice_column(nn_output_var, hid)
         return bkd.exp(h)
 
+    def p_MC(self, nn_input_var, nn_output_var, X):
+        """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
+        """
+        return self.get_p(nn_input_var, nn_output_var)
+
     def get_p(self, nn_input_var, nn_output_var):
         """get p from nn_output or scalar_variables
         """
@@ -315,9 +320,10 @@ class MC_EXACT:
     def p_to_range(self, nn_input_var, nn_output_var):
         """constrain p to [0,1]
         """
+        lb = 0.8
         pid = self.output_var.index('p')
         p1 = slice_column(nn_output_var, pid)
-        p = 0.5 * bkd.sigmoid(p1) + 0.5 # p in [0,1]
+        p = (1.0-lb) * bkd.sigmoid(p1) + lb # p in [lb,1]
         return p
 
     def get_n(self, nn_input_var, nn_output_var):
