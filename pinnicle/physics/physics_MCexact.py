@@ -436,11 +436,11 @@ class MC_EXACT:
 
     ### 6.1) general
     def get_B(self, nn_input_var, nn_output_var):
-        """ define B as exp(B) (positive definite)"""
+        """ define B as 7eX (positive definite)"""
         if 'B' in self.output_var:
             Bid = self.output_var.index('B')
-            B = slice_column(nn_output_var, Bid)
-            B = bkd.exp(B)
+            B_exp = slice_column(nn_output_var, Bid)
+            B = 7.0 * 10.**B_exp
         else:
             B = self.equations[0].parameters.scalar_variables['B']
         return B
@@ -502,18 +502,6 @@ class MC_EXACT:
         tau_d_y = self.tau_d_y(nn_input_var,nn_output_var)
         return -1.*k*tau_d_y
 
-    def effective_strain_rate_SSA(self, nn_input_var, nn_output_var):
-        xid = self.input_var.index('x')
-        yid = self.input_var.index('y')
-        u = self.u_MC(nn_input_var, nn_output_var, None)
-        v = self.v_MC(nn_input_var, nn_output_var, None)
-        dux = jacobian(u, nn_input_var, i=0, j=xid)
-        dvy = jacobian(v, nn_input_var, i=0, j=yid)
-        duy = jacobian(u, nn_input_var, i=0, j=yid)
-        dvx = jacobian(v, nn_input_var, i=0, j=xid)
-        sr = dux**2 + dvy**2 + 0.25*(duy+dvx)**2 + (dux*dvy)
-        return sr**0.5
-
     ### 6.2) sliding laws
 
     def C_Weertman(self, nn_input_var, nn_output_var):
@@ -536,6 +524,18 @@ class MC_EXACT:
 
     ### 6.4) SSA
 
+    def effective_strain_rate_SSA(self, nn_input_var, nn_output_var):
+        xid = self.input_var.index('x')
+        yid = self.input_var.index('y')
+        u = self.u_MC(nn_input_var, nn_output_var, None)
+        v = self.v_MC(nn_input_var, nn_output_var, None)
+        dux = jacobian(u, nn_input_var, i=0, j=xid)
+        dvy = jacobian(v, nn_input_var, i=0, j=yid)
+        duy = jacobian(u, nn_input_var, i=0, j=yid)
+        dvx = jacobian(v, nn_input_var, i=0, j=xid)
+        sr = dux**2 + dvy**2 + 0.25*(duy+dvx)**2 + (dux*dvy)
+        return sr**0.5
+        
     def action_SSA(self, nn_input_var, nn_output_var, X):
         return self.SSA_weak(nn_input_var, nn_output_var)
     
@@ -562,9 +562,72 @@ class MC_EXACT:
         sy = self.s_y(nn_input_var,nn_output_var)
         u_mag = self.vel_mag_MC(nn_input_var,nn_output_var,None)
         sr_eff = self.effective_strain_rate_SSA(nn_input_var, nn_output_var)
-        sr_term = sr_eff**((1/n)+1)
 
-        VISC = 2*n/(n+1) * H * B * sr_term
+        VISC = 2*n/(n+1) * H * B * sr_eff**((1/n)+1)
+        GRAV = rho * g * H * (sx*u + sy*v)
+        FRIC = m/(m+1) * C * u_mag**((1/m)+1)
+
+        return VISC + FRIC + GRAV
+
+    ### 6.5) Lliboutry (MOLHO)
+
+    def dwdz_Lliboutry(self, nn_input_var, nn_output_var, frac_depth):
+        """ ref: F. Parrenin et al., Clim. Past, 3, 243–259, 2007 """
+        H = self.get_H(nn_input_var,nn_output_var)
+        a = self.smb_MC(nn_input_var,nn_output_var,None)
+        p = self.get_p(nn_input_var,nn_output_var)
+        n = self.get_n(nn_input_var,nn_output_var)
+        shape_d = (n+2)/(n+1) * (1 - (1-frac_depth)**(n+1))
+        shape = p + (1-p)*shape_d
+        return -1./H * a * shape
+
+    def effective_strain_rate_Lliboutry(self, nn_input_var, nn_output_var, frac_depth):
+        xid = self.input_var.index('x')
+        yid = self.input_var.index('y')
+        n = get_n(self,nn_input_var, nn_output_var)
+        u_base = self.u_base_MC_MOLHO(nn_input_var, nn_output_var, None)
+        v_base = self.v_base_MC_MOLHO(nn_input_var, nn_output_var, None)
+        u_shear = self.u_shear_MC_MOLHO(nn_input_var, nn_output_var, None)
+        v_shear = self.v_shear_MC_MOLHO(nn_input_var, nn_output_var, None)
+        u = u_base + u_shear * (1 - frac_depth**(n+1))
+        v = v_base + v_shear * (1 - frac_depth**(n+1))
+        dux = jacobian(u, nn_input_var, i=0, j=xid)
+        dvy = jacobian(v, nn_input_var, i=0, j=yid)
+        duy = jacobian(u, nn_input_var, i=0, j=yid)
+        dvx = jacobian(v, nn_input_var, i=0, j=xid)
+        duz = -1 * u_shear * (n+1) * frac_depth**n
+        dvz = -1 * v_shear * (n+1) * frac_depth**n
+        sr = dux**2 + dvy**2 + 0.25*(duy+dvx)**2 + (dux*dvy) + 0.25*duz**2 + 0.25*dvz**2
+        return sr**0.5
+
+    def MOLHO_weak(self, nn_input_var, nn_output_var):
+        """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
+            weak-form pde loss for SSA flow model
+        """
+        ## need in output: B,C,s
+        ## need functions: get_B, get_C, get_s
+
+        n = self.equations[0].parameters.scalar_variables['n']
+        rho = self.equations[0].parameters.scalar_variables['rho']
+        g = self.equations[0].parameters.scalar_variables['g']
+        m = self.equations[0].parameters.scalar_variables['m']
+
+        H = self.get_H(nn_input_var,nn_output_var)
+        B = self.get_B(nn_input_var,nn_output_var)
+        C = self.get_C(nn_input_var,nn_output_var)
+        s = self.get_s(nn_input_var,nn_output_var)
+        u = self.u_MC(nn_input_var,nn_output_var,None)
+        v = self.v_MC(nn_input_var,nn_output_var,None)
+
+        sx = self.s_x(nn_input_var,nn_output_var)
+        sy = self.s_y(nn_input_var,nn_output_var)
+        u_mag = self.vel_mag_MC(nn_input_var,nn_output_var,None)
+        
+        frac_depth = torch.ones_like(H)
+
+        sr_eff = self.effective_strain_rate_Lliboutry(nn_input_var, nn_output_var, frac_depth)
+
+        VISC = 2*n/(n+1) * H * B * sr_eff**((1/n)+1)
         GRAV = rho * g * H * (sx*u + sy*v)
         FRIC = m/(m+1) * C * u_mag**((1/m)+1)
 
