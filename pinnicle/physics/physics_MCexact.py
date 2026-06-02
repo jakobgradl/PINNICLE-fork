@@ -400,9 +400,9 @@ class MC_EXACT:
         return u_base, vel_base_mag
 
     def vel_components_MC(self, nn_input_var, nn_output_var, X):
-        velmag = self.vel_mag_MC(nn_input_var, nn_output_var)
-        vx = self.u_MC(nn_input_var, nn_output_var)
-        vy = self.v_MC(nn_input_var, nn_output_var)
+        velmag = self.vel_mag_MC(nn_input_var, nn_output_var, None)
+        vx = self.u_MC(nn_input_var, nn_output_var, None)
+        vy = self.v_MC(nn_input_var, nn_output_var, None)
         return torch.stack([velmag,vx,vy],axis=2)
 
     ## 5) boundary conditions
