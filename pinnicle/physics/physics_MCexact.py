@@ -440,7 +440,8 @@ class MC_EXACT:
         if 'B' in self.output_var:
             Bid = self.output_var.index('B')
             B_exp = slice_column(nn_output_var, Bid)
-            B = 7.0 * 10.**B_exp
+            # B = 7.0 * 10.**B_exp
+            B = 7.469e7 * 10.**bkd.exp(B_exp)
         else:
             B = self.equations[0].parameters.scalar_variables['B']
         return B
