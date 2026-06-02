@@ -399,6 +399,12 @@ class MC_EXACT:
             vel_base_mag = self.vel_mag_MC(nn_input_var,nn_output_var,None)
         return u_base, vel_base_mag
 
+    def vel_components_MC(self, nn_input_var, nn_output_var, X):
+        velmag = self.vel_mag_MC(nn_input_var, nn_output_var)
+        vx = self.u_MC(nn_input_var, nn_output_var)
+        vy = self.v_MC(nn_input_var, nn_output_var)
+        return torch.stack([velmag,vx,vy],axis=2)
+
     ## 5) boundary conditions
 
     def p_BC(self, nn_input_var, nn_output_var, X):
