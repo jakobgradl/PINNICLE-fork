@@ -603,7 +603,9 @@ class MC_EXACT:
         u_y = jacobian(u, nn_input_var, i=0, j=yid)
         v_y = jacobian(v, nn_input_var, i=0, j=yid)
 
-        eta = 0.5*B *(u_x**2.0 + v_y**2.0 + 0.25*(u_y+v_x)**2.0 + u_x*v_y)**(0.5*(1.0-n)/n)
+        sr_eff = self.effective_strain_rate_SSA(nn_input_var, nn_output_var)
+
+        eta = 0.5*B * sr_eff**((1/n)-1)
         # stress tensor
         etaH = eta * H
         B11 = etaH*(4*u_x + 2*v_y)
@@ -652,7 +654,9 @@ class MC_EXACT:
         u_y = jacobian(u, nn_input_var, i=0, j=yid)
         v_y = jacobian(v, nn_input_var, i=0, j=yid)
 
-        eta = 0.5*B *(u_x**2.0 + v_y**2.0 + 0.25*(u_y+v_x)**2.0 + u_x*v_y)**(0.5*(1.0-n)/n)
+        sr_eff = self.effective_strain_rate_SSA(nn_input_var, nn_output_var)
+
+        eta = 0.5*B * sr_eff**((1/n)-1)
         # stress tensor
         etaH = eta * H
         B11 = etaH*(4*u_x + 2*v_y)
