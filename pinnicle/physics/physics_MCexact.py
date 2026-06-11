@@ -548,6 +548,9 @@ class MC_EXACT:
     def action_SSA(self, nn_input_var, nn_output_var, X):
         return self.SSA_weak(nn_input_var, nn_output_var)
     
+    def res_SSA(self, nn_input_var, nn_output_var, X):
+        return self.SSA_strong(nn_input_var, nn_output_var)
+
     def SSA_weak(self, nn_input_var, nn_output_var):
         """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
             weak-form pde loss for SSA flow model
@@ -574,10 +577,102 @@ class MC_EXACT:
 
         return VISC + FRIC + GRAV
 
-    def SSA_residual(self, nn_input_var, nn_output_var):
+    def SSA_strong(self, nn_input_var, nn_output_var):
         """ operator to evaluate the misfit to the SSA pdes in strong form 
         """
+        xid = self.input_var.index('x')
+        yid = self.input_var.index('y')
 
+        n = self.equations[0].parameters.scalar_variables['n']
+        rho = self.equations[0].parameters.scalar_variables['rho']
+        g = self.equations[0].parameters.scalar_variables['g']
+        m = self.equations[0].parameters.scalar_variables['m']
+
+        H = self.get_H(nn_input_var,nn_output_var)
+        B = self.get_B(nn_input_var,nn_output_var)
+        C = self.get_C(nn_input_var,nn_output_var)
+        u = self.u_MC(nn_input_var,nn_output_var,None)
+        v = self.v_MC(nn_input_var,nn_output_var,None)
+        u_mag = self.vel_mag_MC(nn_input_var,nn_output_var,None)
+
+        sx = self.s_x(nn_input_var,nn_output_var)
+        sy = self.s_y(nn_input_var,nn_output_var)
+
+        u_x = jacobian(u, nn_input_var, i=0, j=xid)
+        v_x = jacobian(v, nn_input_var, i=0, j=xid)
+        u_y = jacobian(u, nn_input_var, i=0, j=yid)
+        v_y = jacobian(v, nn_input_var, i=0, j=yid)
+
+        eta = 0.5*B *(u_x**2.0 + v_y**2.0 + 0.25*(u_y+v_x)**2.0 + u_x*v_y)**(0.5*(1.0-n)/n)
+        # stress tensor
+        etaH = eta * H
+        B11 = etaH*(4*u_x + 2*v_y)
+        B22 = etaH*(4*v_y + 2*u_x)
+        B12 = etaH*(  u_y +   v_x)
+
+        # Getting the other derivatives
+        sigma11 = jacobian(B11, nn_input_var, i=0, j=xid)
+        sigma12 = jacobian(B12, nn_input_var, i=0, j=yid)
+
+        sigma21 = jacobian(B12, nn_input_var, i=0, j=xid)
+        sigma22 = jacobian(B22, nn_input_var, i=0, j=yid)
+
+
+        # compute the basal stress
+        alpha = C * (u_mag)**(1.0/m)
+
+        f1 = sigma11 + sigma12 - alpha*u/(u_mag) - rho*g*H*sx
+        f2 = sigma21 + sigma22 - alpha*v/(u_mag) - rho*g*H*sy
+
+        return (f1**2 + f2**2)**0.5
+
+    def SSA_exact(self, nn_input_var, nn_output_var):
+        """ compute C as the residual of the SSA based on the prediction for B
+            exact solution of SSA 
+        """
+        xid = self.input_var.index('x')
+        yid = self.input_var.index('y')
+
+        n = self.equations[0].parameters.scalar_variables['n']
+        rho = self.equations[0].parameters.scalar_variables['rho']
+        g = self.equations[0].parameters.scalar_variables['g']
+        m = self.equations[0].parameters.scalar_variables['m']
+
+        H = self.get_H(nn_input_var,nn_output_var)
+        B = self.get_B(nn_input_var,nn_output_var)
+        u = self.u_MC(nn_input_var,nn_output_var,None)
+        v = self.v_MC(nn_input_var,nn_output_var,None)
+        u_mag = self.vel_mag_MC(nn_input_var,nn_output_var,None)
+
+        sx = self.s_x(nn_input_var,nn_output_var)
+        sy = self.s_y(nn_input_var,nn_output_var)
+
+        u_x = jacobian(u, nn_input_var, i=0, j=xid)
+        v_x = jacobian(v, nn_input_var, i=0, j=xid)
+        u_y = jacobian(u, nn_input_var, i=0, j=yid)
+        v_y = jacobian(v, nn_input_var, i=0, j=yid)
+
+        eta = 0.5*B *(u_x**2.0 + v_y**2.0 + 0.25*(u_y+v_x)**2.0 + u_x*v_y)**(0.5*(1.0-n)/n)
+        # stress tensor
+        etaH = eta * H
+        B11 = etaH*(4*u_x + 2*v_y)
+        B22 = etaH*(4*v_y + 2*u_x)
+        B12 = etaH*(  u_y +   v_x)
+
+        # Getting the other derivatives
+        sigma11 = jacobian(B11, nn_input_var, i=0, j=xid)
+        sigma12 = jacobian(B12, nn_input_var, i=0, j=yid)
+
+        sigma21 = jacobian(B12, nn_input_var, i=0, j=xid)
+        sigma22 = jacobian(B22, nn_input_var, i=0, j=yid)
+
+        tau_bx = sigma11 + sigma12 - rho*g*H*sx 
+        tau_by = sigma21 + sigma22 - rho*g*H*sy 
+        tau_b = (tau_bx**2 + tau_by**2)**0.5
+
+        C = tau_b * (u_mag)**(-1.0/m)
+
+        return C
 
     ### 6.5) Lliboutry (MOLHO)
 
