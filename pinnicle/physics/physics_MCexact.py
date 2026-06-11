@@ -350,7 +350,8 @@ class MC_EXACT:
         # a = self.equations[0].parameters.scalar_variables['nlb']
         # b = self.equations[0].parameters.scalar_variables['nub']
         # return (b-a) * bkd.sigmoid(n) + a
-        return 1. + bkd.exp(n)
+        # return 1. + bkd.exp(n)
+        return n**2
     
     def mf_mag(self, nn_input_var, nn_output_var,X):
         """ compute the mass flux magnitude
@@ -447,7 +448,8 @@ class MC_EXACT:
             Bid = self.output_var.index('B')
             B_exp = slice_column(nn_output_var, Bid)
             # B = 7.0 * 10.**B_exp
-            B = 7.469e7 * 10.**bkd.exp(B_exp)
+            # B = 7.469e7 * 10.**bkd.exp(B_exp)
+            B = 7.469e7 + 7.469e7 * B_exp**2
         else:
             B = self.equations[0].parameters.scalar_variables['B']
         return B

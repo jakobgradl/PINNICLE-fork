@@ -24,8 +24,10 @@ class SSAweakEquationParamter(EquationParameter, Constants):
         self.output_ub = [self.variable_ub[k] for k in self.output]
         # self.output_lb[2] = 7.
         # self.output_ub[2] = 8.
-        self.output_lb[2] = -10.
-        self.output_ub[2] = 0.
+        # self.output_lb[2] = -10.
+        # self.output_ub[2] = 0.
+        self.output_lb[2] = 0.
+        self.output_ub[2] = 3.
         self.data_weights = [1.0e-3] + [1.0]*2
         self.residuals = []
         self.pde_weights = []
