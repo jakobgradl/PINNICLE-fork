@@ -552,9 +552,6 @@ class MC_EXACT:
         """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
             weak-form pde loss for SSA flow model
         """
-        ## need in output: B,C,s
-        ## need functions: get_B, get_C, get_s
-
         n = self.equations[0].parameters.scalar_variables['n']
         rho = self.equations[0].parameters.scalar_variables['rho']
         g = self.equations[0].parameters.scalar_variables['g']
@@ -563,7 +560,6 @@ class MC_EXACT:
         H = self.get_H(nn_input_var,nn_output_var)
         B = self.get_B(nn_input_var,nn_output_var)
         C = self.get_C(nn_input_var,nn_output_var)
-        s = self.get_s(nn_input_var,nn_output_var)
         u = self.u_MC(nn_input_var,nn_output_var,None)
         v = self.v_MC(nn_input_var,nn_output_var,None)
 
@@ -577,6 +573,11 @@ class MC_EXACT:
         FRIC = m/(m+1) * C * u_mag**((1/m)+1)
 
         return VISC + FRIC + GRAV
+
+    def SSA_residual(self, nn_input_var, nn_output_var):
+        """ operator to evaluate the misfit to the SSA pdes in strong form 
+        """
+
 
     ### 6.5) Lliboutry (MOLHO)
 
