@@ -627,6 +627,109 @@ class MC_EXACT:
         f2 = sigma21 + sigma22 - alpha*v/(u_mag) - rho*g*H*sy
 
         return (f1**2 + f2**2)**0.5
+        # return [f1,f2]
+
+    def SSAx_MC(self, nn_input_var, nn_output_var,X):
+        # return self.SSA_strong(nn_input_var, nn_output_var)[0]
+        xid = self.input_var.index('x')
+        yid = self.input_var.index('y')
+
+        n = self.equations[0].parameters.scalar_variables['n']
+        rho = self.equations[0].parameters.scalar_variables['rho']
+        g = self.equations[0].parameters.scalar_variables['g']
+        m = self.equations[0].parameters.scalar_variables['m']
+
+        H = self.get_H(nn_input_var,nn_output_var)
+        B = self.get_B(nn_input_var,nn_output_var)
+        C = self.get_C(nn_input_var,nn_output_var)
+        u = self.u_MC(nn_input_var,nn_output_var,None)
+        v = self.v_MC(nn_input_var,nn_output_var,None)
+        u_mag = self.vel_mag_MC(nn_input_var,nn_output_var,None)
+
+        sx = self.s_x(nn_input_var,nn_output_var)
+        # sy = self.s_y(nn_input_var,nn_output_var)
+
+        u_x = jacobian(u, nn_input_var, i=0, j=xid)
+        v_x = jacobian(v, nn_input_var, i=0, j=xid)
+        u_y = jacobian(u, nn_input_var, i=0, j=yid)
+        v_y = jacobian(v, nn_input_var, i=0, j=yid)
+
+        sr_eff = self.effective_strain_rate_SSA(nn_input_var, nn_output_var)
+
+        eta = 0.5*B * sr_eff**((1/n)-1)
+        # stress tensor
+        etaH = eta * H
+        B11 = etaH*(4*u_x + 2*v_y)
+        # B22 = etaH*(4*v_y + 2*u_x)
+        B12 = etaH*(  u_y +   v_x)
+
+        # Getting the other derivatives
+        sigma11 = jacobian(B11, nn_input_var, i=0, j=xid)
+        sigma12 = jacobian(B12, nn_input_var, i=0, j=yid)
+
+        # sigma21 = jacobian(B12, nn_input_var, i=0, j=xid)
+        # sigma22 = jacobian(B22, nn_input_var, i=0, j=yid)
+
+
+        # compute the basal stress
+        alpha = C * (u_mag)**(1.0/m)
+
+        f1 = sigma11 + sigma12 - alpha*u/(u_mag) - rho*g*H*sx
+        # f2 = sigma21 + sigma22 - alpha*v/(u_mag) - rho*g*H*sy
+
+        # return (f1**2 + f2**2)**0.5
+        return f1
+
+    def SSAy_MC(self, nn_input_var, nn_output_var,X):
+        # return self.SSA_strong(nn_input_var, nn_output_var)[1]
+        xid = self.input_var.index('x')
+        yid = self.input_var.index('y')
+
+        n = self.equations[0].parameters.scalar_variables['n']
+        rho = self.equations[0].parameters.scalar_variables['rho']
+        g = self.equations[0].parameters.scalar_variables['g']
+        m = self.equations[0].parameters.scalar_variables['m']
+
+        H = self.get_H(nn_input_var,nn_output_var)
+        B = self.get_B(nn_input_var,nn_output_var)
+        C = self.get_C(nn_input_var,nn_output_var)
+        u = self.u_MC(nn_input_var,nn_output_var,None)
+        v = self.v_MC(nn_input_var,nn_output_var,None)
+        u_mag = self.vel_mag_MC(nn_input_var,nn_output_var,None)
+
+        # sx = self.s_x(nn_input_var,nn_output_var)
+        sy = self.s_y(nn_input_var,nn_output_var)
+
+        u_x = jacobian(u, nn_input_var, i=0, j=xid)
+        v_x = jacobian(v, nn_input_var, i=0, j=xid)
+        u_y = jacobian(u, nn_input_var, i=0, j=yid)
+        v_y = jacobian(v, nn_input_var, i=0, j=yid)
+
+        sr_eff = self.effective_strain_rate_SSA(nn_input_var, nn_output_var)
+
+        eta = 0.5*B * sr_eff**((1/n)-1)
+        # stress tensor
+        etaH = eta * H
+        # B11 = etaH*(4*u_x + 2*v_y)
+        B22 = etaH*(4*v_y + 2*u_x)
+        B12 = etaH*(  u_y +   v_x)
+
+        # Getting the other derivatives
+        # sigma11 = jacobian(B11, nn_input_var, i=0, j=xid)
+        # sigma12 = jacobian(B12, nn_input_var, i=0, j=yid)
+
+        sigma21 = jacobian(B12, nn_input_var, i=0, j=xid)
+        sigma22 = jacobian(B22, nn_input_var, i=0, j=yid)
+
+
+        # compute the basal stress
+        alpha = C * (u_mag)**(1.0/m)
+
+        # f1 = sigma11 + sigma12 - alpha*u/(u_mag) - rho*g*H*sx
+        f2 = sigma21 + sigma22 - alpha*v/(u_mag) - rho*g*H*sy
+
+        # return (f1**2 + f2**2)**0.5
+        return f2
 
     def SSA_exact(self, nn_input_var, nn_output_var):
         """ compute C as the residual of the SSA based on the prediction for B
