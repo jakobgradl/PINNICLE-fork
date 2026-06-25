@@ -327,7 +327,7 @@ class MC_EXACT:
     def p_to_range(self, nn_input_var, nn_output_var):
         """ constrain p to [0,1]
         """
-        lb = 0.8
+        lb = 0. # 0.8
         pid = self.output_var.index('p')
         p1 = slice_column(nn_output_var, pid)
         p = (1.0-lb) * bkd.sigmoid(p1) + lb # p in [lb,1]
