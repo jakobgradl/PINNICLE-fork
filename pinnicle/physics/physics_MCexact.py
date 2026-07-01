@@ -109,7 +109,7 @@ class MC_EXACT:
         """
         u = self.u_MC(nn_input_var,nn_output_var,X)
         v = self.v_MC(nn_input_var,nn_output_var,X)
-        vel = ppow((bkd.square(u) + bkd.square(v) + 1.0e-30), 0.5)
+        vel = ppow((bkd.square(u) + bkd.square(v) + (1.0e-30)**2), 0.5)
         return vel
 
 
@@ -458,19 +458,29 @@ class MC_EXACT:
         """ define C as C**2 (positive definite)"""
         Cid = self.output_var.index('C')
         C = slice_column(nn_output_var, Cid)
-        return C**2
+        return C**2 + 1e-30
     
     def get_b(self, nn_input_var, nn_output_var):
         """ get basal elevation b """
         bid = self.output_var.index('b')
         b = slice_column(nn_output_var, bid)
         return b
+
+    def get_surf(self, nn_input_var, nn_output_var):
+        """ get surface elevation s """
+        sid = self.output_var.index('s')
+        s = slice_column(nn_output_var, sid)
+        return s
     
     def get_s(self, nn_input_var, nn_output_var):
         """ get surface elevation s (bed elevation plus thickness)"""
-        H = self.get_H(nn_input_var, nn_output_var)
-        b = self.get_b(nn_input_var, nn_output_var)
-        return b + H
+        if 's' in self.output_var:
+            s = self.get_surf(nn_input_var,nn_output_var)
+        elif 'b' in self.output_var:
+            H = self.get_H(nn_input_var, nn_output_var)
+            b = self.get_b(nn_input_var, nn_output_var)
+            s = b + H
+        return s
 
     def s_MC(self, nn_input_var, nn_output_var, X):
         return self.get_s(nn_input_var, nn_output_var)
@@ -536,13 +546,14 @@ class MC_EXACT:
     def effective_strain_rate_SSA(self, nn_input_var, nn_output_var):
         xid = self.input_var.index('x')
         yid = self.input_var.index('y')
+        eps = 1.0e-30
         u = self.u_MC(nn_input_var, nn_output_var, None)
         v = self.v_MC(nn_input_var, nn_output_var, None)
         dux = jacobian(u, nn_input_var, i=0, j=xid)
         dvy = jacobian(v, nn_input_var, i=0, j=yid)
         duy = jacobian(u, nn_input_var, i=0, j=yid)
         dvx = jacobian(v, nn_input_var, i=0, j=xid)
-        sr = dux**2 + dvy**2 + 0.25*(duy+dvx)**2 + (dux*dvy)
+        sr = dux**2 + dvy**2 + 0.25*(duy+dvx)**2 + (dux*dvy) + eps
         return sr**0.5
         
     def action_SSA(self, nn_input_var, nn_output_var, X):
@@ -634,6 +645,8 @@ class MC_EXACT:
         xid = self.input_var.index('x')
         yid = self.input_var.index('y')
 
+        eps = 1.0e-30
+
         n = self.equations[0].parameters.scalar_variables['n']
         rho = self.equations[0].parameters.scalar_variables['rho']
         g = self.equations[0].parameters.scalar_variables['g']
@@ -657,6 +670,9 @@ class MC_EXACT:
         sr_eff = self.effective_strain_rate_SSA(nn_input_var, nn_output_var)
 
         eta = 0.5*B * sr_eff**((1/n)-1)
+
+        # eta = 0.5*B *(u_x**2.0 + v_y**2.0 + 0.25*(u_y+v_x)**2.0 + u_x*v_y + eps)**(0.5*(1.0-n)/n)
+        
         # stress tensor
         etaH = eta * H
         B11 = etaH*(4*u_x + 2*v_y)
@@ -685,6 +701,8 @@ class MC_EXACT:
         xid = self.input_var.index('x')
         yid = self.input_var.index('y')
 
+        eps = 1.0e-30
+
         n = self.equations[0].parameters.scalar_variables['n']
         rho = self.equations[0].parameters.scalar_variables['rho']
         g = self.equations[0].parameters.scalar_variables['g']
@@ -708,6 +726,9 @@ class MC_EXACT:
         sr_eff = self.effective_strain_rate_SSA(nn_input_var, nn_output_var)
 
         eta = 0.5*B * sr_eff**((1/n)-1)
+
+        # eta = 0.5*B *(u_x**2.0 + v_y**2.0 + 0.25*(u_y+v_x)**2.0 + u_x*v_y + eps)**(0.5*(1.0-n)/n)
+        
         # stress tensor
         etaH = eta * H
         # B11 = etaH*(4*u_x + 2*v_y)
