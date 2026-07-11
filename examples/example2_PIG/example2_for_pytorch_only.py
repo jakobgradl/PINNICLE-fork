@@ -3,7 +3,7 @@ import pinnicle
 # hyperparameters
 hp = {}
 hp["epochs"] = [100000, 10000]
-hp["optimizers"] = ["adam","L-BFGS"]
+hp["optimizers"] = ["adam","adam"] #"L-BFGS"]
 
 # NN
 hp["num_neurons"] = 40
