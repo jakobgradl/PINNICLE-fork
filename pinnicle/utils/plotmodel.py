@@ -152,6 +152,8 @@ def plotmodelcompare(model, dataname, output, scaling=1, diffrange=None,
     max_points : int or None
         Optional quick-look downsampling. If set and data contain more points,
         an evenly spaced subset is plotted and predicted.
+    default_time: float or None
+        used for time depenent prediction and plot
     """
     figsize = kwargs.pop("figsize", (12, 5))
     batch_size = kwargs.pop("batch_size", None)
@@ -159,6 +161,7 @@ def plotmodelcompare(model, dataname, output, scaling=1, diffrange=None,
     rasterized = kwargs.pop("rasterized", True)
     scatter_size = kwargs.pop("scatter_size", 1)
     max_points = kwargs.pop("max_points", None)
+    default_time = kwargs.pop("default_time", None)
 
     fig, axs = plt.subplots(1, 3, figsize=figsize)
 
@@ -183,7 +186,7 @@ def plotmodelcompare(model, dataname, output, scaling=1, diffrange=None,
         data = data[idx]
         mask = mask[idx]
 
-    X_nn = np.column_stack((X, Y))
+    X_nn = column_stack(model, X, Y, default_time)
     sol_pred = _predict_in_batches(model, X_nn, batch_size=batch_size)
     keylist = model.params.nn.output_variables
     pred = _extract_prediction(sol_pred, keylist, output)
@@ -246,7 +249,8 @@ def plotprediction(axs, model, key, X=None, Y=None, scaling=1, resolution=200,
     X = X[valid_xy]
     Y = Y[valid_xy]
 
-    sol_pred = _predict_in_batches(model, np.column_stack((X, Y)), kwargs.pop("batch_size", None))
+    X_nn = column_stack(model, X, Y, kwargs.pop("default_time", None))
+    sol_pred = _predict_in_batches(model, X_nn, kwargs.pop("batch_size", None))
     data = _extract_prediction(sol_pred, model.params.nn.output_variables, key)
 
     if operator is not None:
@@ -268,7 +272,8 @@ def plotdiff(axs, model, X, Y, data, key, scaling=1, iscatter=False, **kwargs):
     data = data[valid_xy]
     mask = mask[valid_xy]
 
-    sol_pred = _predict_in_batches(model, np.column_stack((X, Y)), kwargs.pop("batch_size", None))
+    X_nn = column_stack(model, X, Y, kwargs.pop("default_time", None))
+    sol_pred = _predict_in_batches(model, X_nn, kwargs.pop("batch_size", None))
     pred = _extract_prediction(sol_pred, model.params.nn.output_variables, key)
 
     if iscatter:
@@ -304,3 +309,14 @@ def plotscatter(axs, X, Y, data, **kwargs):
     kwargs.setdefault("s", 1)
     kwargs.setdefault("rasterized", True)
     return axs.scatter(X, Y, c=data, **kwargs)
+
+def column_stack(model, X, Y, default_time=None):
+    """Concat X,Y for the prediction, with time, if neeeded"""
+    X_nn = np.column_stack((X, Y))
+
+    if model.params.domain.time_dependent:
+        if default_time is None:
+            default_time = model.params.domain.start_time
+        X_nn = np.column_stack((X_nn, np.ones([X_nn.shape[0],1])*default_time))
+
+    return X_nn

@@ -11,6 +11,7 @@ from matplotlib.collections import PathCollection, PolyCollection, QuadMesh
 
 from pinnicle.utils import *
 import pytest
+import copy
 
 weights = [7, 7, 5, 5, 3, 3, 5]
 
@@ -236,3 +237,26 @@ def test_plot2d_returns_quadmesh_for_regular_grid(regular_grid):
     artist = pm.plot2d(ax, X, Y, np.arange(X.size, dtype=float))
 
     assert isinstance(artist, QuadMesh)
+
+def test_column_stack(regular_grid):
+    X, Y = regular_grid
+    model = pinn.PINN(params=hp)
+    model.compile()
+
+    X_nn = column_stack(model, X, Y, default_time=None)
+    assert X_nn.shape[1] == 2
+
+    hp["time_dependent"] = True
+    hp["start_time"]     = 0
+    hp["end_time"]       = 1
+    model = pinn.PINN(params=hp)
+    model.compile()
+    
+    X_nn = column_stack(model, X, Y, default_time=None)
+    assert X_nn.shape[1] == 3
+
+    X_nn = column_stack(model, X, Y, default_time=10)
+    assert X_nn.shape[1] == 3
+
+
+
