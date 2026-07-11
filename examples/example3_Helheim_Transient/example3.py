@@ -1,14 +1,16 @@
 import pinnicle
 import numpy as np
 
+yts = pinnicle.physics.constants.Constants().yts
+
 # hyperparameters
 hp = {}
 hp["epochs"] = 800000
 
 # time dependent problem
 hp["time_dependent"] = True
-hp["start_time"]     = 2008
-hp["end_time"]       = 2009
+hp["start_time"]     = 2008*yts
+hp["end_time"]       = 2009*yts
 
 # NN
 hp["num_neurons"] = 32
@@ -31,7 +33,7 @@ for t in np.linspace(2008,2009,11):
         issm["data_size"] = {"u":3000, "v":3000, "a":3000, "H":None}
         
     issm["data_path"]         = "Helheim_Transient_" + "%g"%t + ".mat"
-    issm["default_time"]      = t
+    issm["default_time"]      = t*yts
     issm["source"]            = "ISSM"
     hp["data"]["ISSM"+"%g"%t] = issm
 
