@@ -218,14 +218,16 @@ class NNParameter(ParameterBase):
         self.num_layers = 0
         self.activation = "tanh"
         self.initializer = "Glorot uniform"
+        
+        # time dependency
+        self.time_dependent = False
 
         # fourier feature transform
         self.fft = False
         self.num_space_fourier_feature = 10
-        self.num_time_fourier_feature = 10
         self.space_sigma = 1.0
         self.space_B = None
-        self.time_dependent = False
+        self.num_time_fourier_feature = 10
         self.time_sigma = 1.0
         self.time_B = None
 
@@ -239,21 +241,24 @@ class NNParameter(ParameterBase):
         self.output_ub = None
 
     def check_consistency(self):
-        if self.fft:
-            if self.input_size != (self.num_space_fourier_feature*self.space_sigma_size*2) + (self.num_time_fourier_feature*self.time_sigma_size*2):
+        if self.fft and not self.time_dependent:
+            if self.input_size != (self.num_space_fourier_feature*self.space_sigma_size*2):
                 raise ValueError("'input_size' does not match the number of fourier feature")
             # Check spatial B matrix
             if not self.time_dependent and self.space_B is not None:
                 if not isinstance(self.space_B, list):
-                    raise TypeError("Spatial 'B' matrix need to be input in a list")
+                    raise TypeError("Spatial 'B' matrix needs to be input as a list")
                 if len(self.space_B[0]) != self.num_space_fourier_feature*self.space_sigma_size:
-                    raise ValueError("Number of columns of spatial 'B' matrix does not match the number of fourier feature")
+                    raise ValueError("Number of columns of spatial 'B' matrix does not match the number of Fourier features")
+        elif self.fft and self.time_dependent:
+            if self.input_size != (self.num_space_fourier_feature*self.space_sigma_size*2) + (self.num_time_fourier_feature*self.time_sigma_size*2):
+                raise ValueError("'input_size' does not match the number of fourier feature")
             # Check temporal B matrix
-            if not self.time_dependent and self.time_B is not None:
+            if self.time_dependent and self.time_B is not None:
                 if not isinstance(self.time_B, list):
-                    raise TypeError("Temporal 'B' matrix need to be input in a list")
+                    raise TypeError("Temporal 'B' matrix needs to be input as a list")
                 if len(self.time_B[0]) != self.num_time_fourier_feature*self.time_sigma_size:
-                    raise ValueError("Number of columns of temporal 'B' matrix does not match the number of fourier feature")
+                    raise ValueError("Number of columns of temporal 'B' matrix does not match the number of Fourier features")
         else:
             # input size of nn equals to dependent in physics
             if self.input_size != len(self.input_variables):
@@ -294,7 +299,7 @@ class NNParameter(ParameterBase):
             if self.is_parallel:
                 raise ValueError("FFT currently does not support parallel nets")
 
-            # always convert sigma to a list
+            # Convert space sigma to a list
             if not isinstance(self.space_sigma, list):
                 self.space_sigma = [self.space_sigma]
             
@@ -302,11 +307,12 @@ class NNParameter(ParameterBase):
             if not isinstance(self.time_sigma, list):
                 self.time_sigma = [self.time_sigma]
 
+            # Create space-dependent input size
             # we need to know this size, to create and reshape B in nn.py
             self.space_sigma_size = len(self.space_sigma)
             self.input_size = self.num_space_fourier_feature*self.space_sigma_size*2
             
-            # Create time-dependent input size
+            # Reshape for time-dependent input size
             if self.time_dependent:
                 self.time_sigma_size = len(self.time_sigma)
                 self.input_size = (self.num_time_fourier_feature*self.time_sigma_size*2) + (self.num_space_fourier_feature*self.space_sigma_size*2)

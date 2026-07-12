@@ -22,8 +22,9 @@ class FNN:
             # append linear transform for the output
             self.activation = self.parameters.activation + [None]
 
+        # Merge space and time-dependent Fourier features in second-to-last layer
         elif self.parameters.fft and self.parameters.time_dependent:
-            # TODO: Point-wise multiplication of Fourier features to merge
+            # TODO: Point-wise multiplication of Fourier features to merge in second-to-last layer
             
             # Add layer before output node
             self.num_neurons = parameters.num_neurons + [parameters.num_space_fourier_feature*parameters.space_sigma_size + parameters.num_time_fourier_feature*parameters.time_sigma_size]
@@ -83,7 +84,7 @@ class FNN:
                             np.reshape(np.random.normal(0.0, self.parameters.time_sigma, [time_len, self.parameters.num_time_fourier_feature, self.parameters.time_sigma_size]), [time_len, self.parameters.num_time_fourier_feature*self.parameters.time_sigma_size]),
                             dtype=default_float_type())
                 def wrapper(x):
-                    """a wrapper function to add fourier feature transform to the spatial and temporal inputs separately
+                    """a wrapper function to add Fourier feature transform to the spatial and temporal inputs separately
                     """
                     x_scaled = minmax_scale(x, self.parameters.input_lb, self.parameters.input_ub)
                     x_space = x_scaled[:, :space_len]
@@ -154,5 +155,3 @@ class FNN:
         def _wrapper(dummy, x):
             return  func(x, self.parameters.output_lb, self.parameters.output_ub)
         self.net.apply_output_transform(_wrapper)
-
-

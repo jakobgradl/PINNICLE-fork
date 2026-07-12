@@ -86,4 +86,3 @@ class Domain:
         newy = 0.5*(domain_list[0][1] + domain_list[1][1])
         newx = 0.5*(domain_list[0][0] + domain_list[1][0])
         domain_list.insert(1, [newx, newy])
-

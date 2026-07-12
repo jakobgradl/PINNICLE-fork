@@ -261,7 +261,7 @@ def test_fft_training(tmp_path):
     hp_local["is_save"] = True
     hp_local["save_path"] = str(tmp_path)
     hp_local["num_collocation_points"] = 10
-    hp_local["sigma"] = [1.0, 10.0]
+    hp_local["space_sigma"] = [1.0, 10.0]
     issm["data_size"] = {"u":10, "v":10, "s":10, "H":10, "C":None}
     hp_local["data"] = {"ISSM": issm}
     hp_local["equations"] = {"SSA":SSA}
@@ -269,16 +269,50 @@ def test_fft_training(tmp_path):
     experiment = pinn.PINN(params=hp_local)
     experiment.save_setting(path=tmp_path)
     assert experiment.params.param_dict == experiment.load_setting(path=tmp_path)
-    assert experiment.params.nn.B is None
+    assert experiment.params.nn.space_B is None
     assert os.path.isdir(f"{tmp_path}/pinn/")
     experiment2 = pinn.PINN(loadFrom=tmp_path)
     assert experiment.params.param_dict == experiment2.params.param_dict
-    assert len(experiment2.params.nn.B) == 2
-    assert len(experiment2.params.nn.B[1]) == 20    
+    assert len(experiment2.params.nn.space_B) == 2
+    assert len(experiment2.params.nn.space_B[1]) == 20    
     assert experiment2.params.nn.num_layers == 4
     experiment.compile()
     experiment.train(iterations=10)
     assert experiment.loss_names == ['fSSA1', 'fSSA2', 'u', 'v', 's', 'H', 'C']
+    experiment.load_model(path=tmp_path, epochs=hp_local['epochs'])
+    
+@pytest.mark.skipif(backend_name in ["jax"], reason="There is a bug in deepxde (jax backend), when assigning a list of activation function, it reads in as a tuple!")
+def test_fft_timedependent_training(tmp_path):
+    hp_local = dict(hp)
+    hp_local['fft'] = True
+    hp_local["time_dependent"] = True
+    hp_local["is_save"] = True
+    hp_local["save_path"] = str(tmp_path)
+    hp_local["num_collocation_points"] = 10
+    hp_local["space_sigma"] = [1.0, 10.0]
+    hp_local["time_sigma"] = [1.0, 10.0]
+    hp_local["start_time"] = 0
+    hp_local["end_time"] = 1
+    issm["data_size"] = {"u":10, "v":10, "H":10}
+    hp_local["data"] = {"ISSM": issm}
+    hp_local["equations"] = {"Mass transport":{}}
+    hp_local["epochs"] = 10
+    experiment = pinn.PINN(params=hp_local)
+    experiment.save_setting(path=tmp_path)
+    assert experiment.params.param_dict == experiment.load_setting(path=tmp_path)
+    assert experiment.params.nn.space_B is None
+    assert experiment.params.nn.time_B is None
+    assert os.path.isdir(f"{tmp_path}/pinn/")
+    experiment2 = pinn.PINN(loadFrom=tmp_path)
+    assert experiment.params.param_dict == experiment2.params.param_dict
+    assert len(experiment2.params.nn.space_B) == 2
+    assert len(experiment2.params.nn.space_B[1]) == 20 
+    assert len(experiment2.params.nn.time_B) == 1
+    assert len(experiment2.params.nn.time_B[0]) == 20     
+    assert experiment2.params.nn.num_layers == 4
+    experiment.compile()
+    experiment.train(iterations=10)
+    assert experiment.loss_names == ['fMass transport', 'u', 'v', 'H']
     experiment.load_model(path=tmp_path, epochs=hp_local['epochs'])
 
 @pytest.mark.skipif(backend_name in ["jax"], reason="calving front boundary is not implemented for jax")
