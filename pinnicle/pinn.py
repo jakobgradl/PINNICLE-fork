@@ -323,16 +323,22 @@ class PINN:
                                                                          batch_size=min_or_none(self.params.training.mini_batch, training_data.sol[d].shape[0]), shuffle=True))
                     elif d == "action_SSA":
                         training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.action_SSA,
-                                                                         batch_size=min_or_none(int(np.floor(self.params.training.mini_batch/2)), training_data.sol[d].shape[0]), shuffle=True))
+                                                                        #  batch_size=min_or_none(int(np.floor(self.params.training.mini_batch/2)), training_data.sol[d].shape[0]), 
+                                                                         batch_size=1_000,
+                                                                         shuffle=True))
                     elif d == "res_SSA":
                         training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.res_SSA,
                                                                          batch_size=min_or_none(int(np.floor(self.params.training.mini_batch/2)), training_data.sol[d].shape[0]), shuffle=True))
                     elif d == "SSAx_MC":
                         training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.SSAx_MC,
-                                                                         batch_size=min_or_none(int(np.floor(self.params.training.mini_batch/20)), training_data.sol[d].shape[0]), shuffle=True))
+                                                                        #  batch_size=min_or_none(int(np.floor(self.params.training.mini_batch/20)), training_data.sol[d].shape[0]), 
+                                                                         batch_size=200,
+                                                                         shuffle=True))
                     elif d == "SSAy_MC":
                         training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.SSAy_MC,
-                                                                         batch_size=min_or_none(int(np.floor(self.params.training.mini_batch/20)), training_data.sol[d].shape[0]), shuffle=True))
+                                                                        #  batch_size=min_or_none(int(np.floor(self.params.training.mini_batch/20)), training_data.sol[d].shape[0]), 
+                                                                         batch_size=200,
+                                                                         shuffle=True))
                     elif d == "sx":
                         training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.user_defined_gradient('s','x'),
                                                                          batch_size=min_or_none(self.params.training.mini_batch, training_data.sol[d].shape[0]), shuffle=True))
