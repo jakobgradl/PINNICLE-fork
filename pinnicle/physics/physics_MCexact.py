@@ -354,13 +354,13 @@ class REGU_P(EquationBase): #{{{
         p1 = slice_column(nn_output_var, pid)
         p = bkd.sigmoid(p1) # p in [0,1]
 
-        u_mf = (jacobian(nn_output_var,nn_input_var,i=Dsmbid,j=xid) - #+ 
-                # jacobian(nn_output_var,nn_input_var,i=DdHid,j=xid) - 
-                jacobian(nn_output_var,nn_input_var,i=Rid,j=yid))
+        u_mf = (jacobian(nn_output_var,nn_input_var,i=Dsmbid,j=xid)
+                # + jacobian(nn_output_var,nn_input_var,i=DdHid,j=xid)
+                - jacobian(nn_output_var,nn_input_var,i=Rid,j=yid))
         
-        v_mf = (jacobian(nn_output_var,nn_input_var,i=Dsmbid,j=yid) - #+ 
-                # jacobian(nn_output_var,nn_input_var,i=DdHid,j=yid) - 
-                jacobian(nn_output_var,nn_input_var,i=Rid,j=xid))
+        v_mf = (jacobian(nn_output_var,nn_input_var,i=Dsmbid,j=yid)
+                # + jacobian(nn_output_var,nn_input_var,i=DdHid,j=yid)
+                + jacobian(nn_output_var,nn_input_var,i=Rid,j=xid))
         
         u_bar = u_mf / H
         v_bar = v_mf / H
@@ -445,13 +445,13 @@ class REGU_N(EquationBase): #{{{
         b = 18 
         n = (b-a) * bkd.sigmoid(n1) + a
 
-        u_mf = (jacobian(nn_output_var,nn_input_var,i=Dsmbid,j=xid) - #+ 
-                # jacobian(nn_output_var,nn_input_var,i=DdHid,j=xid) - 
-                jacobian(nn_output_var,nn_input_var,i=Rid,j=yid))
+        u_mf = (jacobian(nn_output_var,nn_input_var,i=Dsmbid,j=xid) 
+                # + jacobian(nn_output_var,nn_input_var,i=DdHid,j=xid)
+                - jacobian(nn_output_var,nn_input_var,i=Rid,j=yid))
         
-        v_mf = (jacobian(nn_output_var,nn_input_var,i=Dsmbid,j=yid) - #+ 
-                # jacobian(nn_output_var,nn_input_var,i=DdHid,j=yid) - 
-                jacobian(nn_output_var,nn_input_var,i=Rid,j=xid))
+        v_mf = (jacobian(nn_output_var,nn_input_var,i=Dsmbid,j=yid)
+                # + jacobian(nn_output_var,nn_input_var,i=DdHid,j=yid)
+                + jacobian(nn_output_var,nn_input_var,i=Rid,j=xid))
         
         u_bar = u_mf / H
         v_bar = v_mf / H
@@ -519,7 +519,6 @@ class REGU_Nmag(EquationBase): #{{{
         a = 3 
         b = 18 
         n = (b-a) * bkd.sigmoid(n1) + a
-        # n = bkd.sigmoid(n1) # p in [0,1]
 
         f = n
 
