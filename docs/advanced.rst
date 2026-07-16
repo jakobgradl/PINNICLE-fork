@@ -14,7 +14,7 @@ And in the data section, you can set the ``"data_size"`` to a large number or si
 
 .. code-block:: python
    
-   hp_local["data"] = {"ISSM": {"data_size": {"u":100, "v":"MAX", "s":100, "H":10, "C":None}}}
+   hp["data"] = {"ISSM": {"data_size": {"u":100, "v":"MAX", "s":100, "H":10, "C":None}}}
    hp["mini_batch"] = mini_batch
 
 - Avoid setting ``mini_batch`` too large, as this can lead to inefficiencies and excessive memory usage.
@@ -34,6 +34,18 @@ PINNICLE supports the resampling of collocation points during training. To activ
 
 This will instruct PINNICLE to resample the collocation points every 100 epochs.
 
+
+Training with a list of optimizers
+----------------------------------
+PINNICLE now supports training with a list of optimizers, allowing users to combine the strengths of different optimization strategies within a single training workflow. Users can define an ordered sequence of optimizers, each with its own training configuration, such number of epochs.
+
+.. code-block:: python
+
+   hp["optimizers"] = ["adam", "L-BFGS"]
+   hp["epochs"] = [100000, 20000]
+
+.. note::
+   This feature is not supported by JAX due to the backend restriciton.
 
 
 Load Settings from Previous Experiment
@@ -83,3 +95,12 @@ In this example, we define a ``dict`` with a key ``output``, where the value is 
 
 By default, the ``Dummy`` physics already has ``x`` and ``y`` as ``input``. If there is no need to change this, only the ``output`` needs to be defined.
 
+
+Manually Override Data Weights
+------------------------------
+
+When coupling different physics or observational constraints, the default data weights may not always produce the desired balance among loss terms. Users can manually override the weights for selected variables by setting ``manual_data_weights`` in the hyperparameter dictionary.
+
+.. code-block:: python
+
+   hp["manual_data_weights"] = {"H": 1.0e-6, "s": 1.0e-4}

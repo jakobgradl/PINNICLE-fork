@@ -3,10 +3,10 @@ import pinnicle as pinn
 import numpy as np
 import deepxde as dde
 from pinnicle.utils import tripcolor_similarity, tripcolor_residuals, diffplot, resplot, plot_tracks
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pytest
-
-dde.config.set_default_float('float64')
 
 weights = [7, 7, 5, 5, 3, 3, 5]
 

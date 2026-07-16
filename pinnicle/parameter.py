@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from .utils import data_misfit
 from deepxde.backend import backend_name
+import numpy as np
 
 
 class ParameterBase(ABC):
@@ -120,7 +121,9 @@ class DataParameter(ParameterBase):
         self.data = {}
 
     def check_consistency(self):
-        pass
+        for k in self.data:
+            if self.data[k].data_path == "":
+                raise ValueError(f"{k}[\"data_path\"] can not be empty!")
 
     def __str__(self):
         """
@@ -215,12 +218,18 @@ class NNParameter(ParameterBase):
         self.num_layers = 0
         self.activation = "tanh"
         self.initializer = "Glorot uniform"
+        
+        # time dependency
+        self.time_dependent = False
 
         # fourier feature transform
         self.fft = False
-        self.num_fourier_feature = 10
-        self.sigma = 1.0
-        self.B = None
+        self.num_space_fourier_feature = 10
+        self.space_sigma = 1.0
+        self.space_B = None
+        self.num_time_fourier_feature = 10
+        self.time_sigma = 1.0
+        self.time_B = None
 
         # parallel neural network
         self.is_parallel = False
@@ -232,14 +241,24 @@ class NNParameter(ParameterBase):
         self.output_ub = None
 
     def check_consistency(self):
-        if self.fft:
-            if self.input_size != self.num_fourier_feature*self.sigma_size*2:
+        if self.fft and not self.time_dependent:
+            if self.input_size != (self.num_space_fourier_feature*self.space_sigma_size*2):
                 raise ValueError("'input_size' does not match the number of fourier feature")
-            if self.B is not None:
-                if not isinstance(self.B, list):
-                    raise TypeError("'B' matrix need to be input in a list")
-                if len(self.B[0]) != self.num_fourier_feature*self.sigma_size:
-                    raise ValueError("Number of columns of 'B' matrix does not match the number of fourier feature")
+            # Check spatial B matrix
+            if not self.time_dependent and self.space_B is not None:
+                if not isinstance(self.space_B, list):
+                    raise TypeError("Spatial 'B' matrix needs to be input as a list")
+                if len(self.space_B[0]) != self.num_space_fourier_feature*self.space_sigma_size:
+                    raise ValueError("Number of columns of spatial 'B' matrix does not match the number of Fourier features")
+        elif self.fft and self.time_dependent:
+            if self.input_size != (self.num_space_fourier_feature*self.space_sigma_size*2) + (self.num_time_fourier_feature*self.time_sigma_size*2):
+                raise ValueError("'input_size' does not match the number of fourier feature")
+            # Check temporal B matrix
+            if self.time_dependent and self.time_B is not None:
+                if not isinstance(self.time_B, list):
+                    raise TypeError("Temporal 'B' matrix needs to be input as a list")
+                if len(self.time_B[0]) != self.num_time_fourier_feature*self.time_sigma_size:
+                    raise ValueError("Number of columns of temporal 'B' matrix does not match the number of Fourier features")
         else:
             # input size of nn equals to dependent in physics
             if self.input_size != len(self.input_variables):
@@ -280,13 +299,23 @@ class NNParameter(ParameterBase):
             if self.is_parallel:
                 raise ValueError("FFT currently does not support parallel nets")
 
-            # always convert sigma to a list
-            if not isinstance(self.sigma, list):
-                self.sigma = [self.sigma]
+            # Convert space sigma to a list
+            if not isinstance(self.space_sigma, list):
+                self.space_sigma = [self.space_sigma]
+            
+            # Convert time sigma to a list
+            if not isinstance(self.time_sigma, list):
+                self.time_sigma = [self.time_sigma]
 
+            # Create space-dependent input size
             # we need to know this size, to create and reshape B in nn.py
-            self.sigma_size = len(self.sigma)
-            self.input_size = self.num_fourier_feature*self.sigma_size*2
+            self.space_sigma_size = len(self.space_sigma)
+            self.input_size = self.num_space_fourier_feature*self.space_sigma_size*2
+            
+            # Reshape for time-dependent input size
+            if self.time_dependent:
+                self.time_sigma_size = len(self.time_sigma)
+                self.input_size = (self.num_time_fourier_feature*self.time_sigma_size*2) + (self.num_space_fourier_feature*self.space_sigma_size*2)
 
             # cover num_neurons to list
             if not isinstance(self.num_neurons, list):
@@ -308,6 +337,11 @@ class PhysicsParameter(ParameterBase):
         # name(s) and parameters of the equations
         self.equations = {}
         self.manual_data_weights = None
+
+        # NOTE: these two settings will override the default and single equation settings, 
+        # but if the data has large range, PINNICLE will still follow the data in the end
+        self.manual_output_lb = None
+        self.manual_output_ub = None
 
     def check_consistency(self):
         pass
@@ -409,10 +443,12 @@ class TrainingParameter(ParameterBase):
 
 
     def set_default(self):
+        # random seed, set default to None
+        self.random_seed = None
         # number of epochs
         self.epochs = 0
         # optimization method
-        self.optimizer = "adam"
+        self.optimizers = "adam"
         # general loss function
         self.loss_functions = "MSE"
         # additional loss functions, specified as a dict
@@ -444,7 +480,20 @@ class TrainingParameter(ParameterBase):
         self.is_plot = False
 
     def check_consistency(self):
-        pass
+        # convert epochs and optimizers to list
+        if not isinstance(self.epochs, list):
+            self.epochs = [self.epochs]
+        if not isinstance(self.optimizers, list):
+            self.optimizers = [self.optimizers]
+        # length of epochs should match optimizers
+        if len(self.epochs) != len(self.optimizers):
+            raise ValueError("Length of epochs does not match the length of optimizers")
+        # we need to check the random seeds
+        if type(self.random_seed) is not int:
+            raise TypeError("Random seed must be an integer")
+        if (self.random_seed < 1) or (self.random_seed > 9999):
+            raise ValueError("Random seed not supported, must be between 1 and 9999")
+
 
     def check_callbacks(self):
         """ check if any of the following variable is given from setting
@@ -507,6 +556,9 @@ class TrainingParameter(ParameterBase):
     def update(self):
         """ convert dict to class LossFunctionParameter
         """
+        if self.random_seed is None:
+            self.random_seed = np.random.randint(1, 9999)
+
         # update additional loss
         if self.additional_loss:
             self.additional_loss = {k:LossFunctionParameter(self.additional_loss[k]) for k in self.additional_loss}
@@ -575,9 +627,14 @@ class Parameters(ParameterBase):
         """
         update parameters according to the input
         """
-        # set the size of variables not given in data to None
-        for x in self.nn.output_variables:
-            if x not in self.data.datasize:
-                self.data.datasize[x] = None
+       # Ensure each dataset has an entry in data_size for each output variable
+        # DataParameter stores datasets in self.data.data (dict of SingleDataParameter)
+        if hasattr(self.data, "data") and isinstance(self.data.data, dict):
+            for _, ds in self.data.data.items():
+                # ds should be a SingleDataParameter
+                if not hasattr(ds, "data_size") or ds.data_size is None:
+                    ds.data_size = {}
+                for x in self.nn.output_variables:
+                    ds.data_size.setdefault(x, None)
 
         pass

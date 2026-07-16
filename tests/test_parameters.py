@@ -73,6 +73,12 @@ def test_data_parameter():
     assert d.data["mymat"].source == "mat"
     assert d.data["myh5"].source == "h5"
 
+    with pytest.raises(Exception):
+        nopath = {}
+        hp_local = {}
+        hp_local["data"] = {"nopath":nopath}
+        d = DataParameter(hp_local)
+
 def test_nn_parameter():
     d = NNParameter()
     assert hasattr(d, "param_dict"), "Default attribute 'param_dict' not found"
@@ -92,23 +98,46 @@ def test_nn_parameter():
     assert d.input_size == 0
 
     d = NNParameter({"fft":True})
-    assert d.input_size == 2*d.num_fourier_feature
-    assert isinstance(d.sigma, list)
+    assert d.input_size == 2*d.num_space_fourier_feature
+    assert isinstance(d.space_sigma, list)
     assert d.is_input_scaling()
-    assert d.B is None
+    assert d.space_B is None
 
-    d = NNParameter({"fft":True, "num_fourier_feature":4, "B":[[1,2,3,4]]})
-    assert d.B is not None
+    d = NNParameter({"fft":True, "num_space_fourier_feature":4, "space_B":[[1,2,3,4]]})
+    assert d.space_B is not None
     with pytest.raises(Exception):
-        d = NNParameter({"fft":True, "num_fourier_feature":4, "B":1})
-        d = NNParameter({"fft":True, "num_fourier_feature":4, "B":[[1,2]]})
+        d = NNParameter({"fft":True, "num_space_fourier_feature":4, "space_B":1})
+        d = NNParameter({"fft":True, "num_space_fourier_feature":4, "space_B":[[1,2]]})
+    
+    d = NNParameter({"fft":True, "time_dependent":True, "num_time_fourier_feature":4, "time_B":[[1,2,3,4]]})
+    assert d.time_B is not None
+    with pytest.raises(Exception):
+        d = NNParameter({"fft":True, "time_dependent":True, "num_time_fourier_feature":4, "time_B":1})
+        d = NNParameter({"fft":True, "time_dependent":True, "num_time_fourier_feature":4, "time_B":[[1,2]]})
+
+    d = NNParameter({"fft":True, "time_dependent":True})
+    assert d.input_size == (2*d.num_space_fourier_feature + 2*d.num_time_fourier_feature)
+    assert isinstance(d.space_sigma, list)
+    assert isinstance(d.time_sigma, list)
+    assert d.is_input_scaling()
+    assert d.space_B is None
+    assert d.time_B is None
 
     with pytest.raises(Exception):
         d = NNParameter({"fft":True, "is_parallel":True})
 
-    d = NNParameter({"fft":True, "sigma":[1,10], "num_neurons":23, "num_layers":3})
-    assert d.sigma_size == 2
-    assert d.input_size == 2*d.num_fourier_feature*d.sigma_size
+    d = NNParameter({"fft":True, "space_sigma":[1,10], "num_neurons":23, "num_layers":3})
+    assert d.space_sigma_size == 2
+    assert d.input_size == 2*d.num_space_fourier_feature*d.space_sigma_size
+    assert isinstance(d.num_neurons, list)
+    assert d.num_layers == 3
+    assert len(d.num_neurons) == d.num_layers
+    assert d.num_neurons[-1] == 23
+    
+    d = NNParameter({"fft":True, "time_dependent":True, "space_sigma":[1,10], "time_sigma":[1,10], "num_neurons":23, "num_layers":3})
+    assert d.space_sigma_size == 2
+    assert d.time_sigma_size == 2
+    assert d.input_size == (2*d.num_space_fourier_feature*d.space_sigma_size + 2*d.num_time_fourier_feature*d.time_sigma_size)
     assert isinstance(d.num_neurons, list)
     assert d.num_layers == 3
     assert len(d.num_neurons) == d.num_layers
@@ -187,6 +216,7 @@ def test_training_parameters():
     assert p.decay_steps == 10
     assert p.decay_rate == 0.3
     assert p.additional_loss == {}
+
     u_loss = {}
     u_loss['name'] = "vel log"
     u_loss['function'] = "VEL_LOG"
@@ -194,6 +224,32 @@ def test_training_parameters():
     hp['additional_loss'] = {"u": u_loss}
     p = TrainingParameter(hp)
     assert p.additional_loss["u"].name == u_loss['name']
+
+    hp['random_seed'] = 1234
+    p = TrainingParameter(hp)
+    assert p.random_seed == 1234
+    assert len(p.epochs) == 1
+    assert len(p.optimizers) == 1
+
+    hp['epochs'] = [10, 10]
+    with pytest.raises(ValueError):
+        p = TrainingParameter(hp)
+
+    hp['optimizers'] = ['adam', 'L-BFGS']
+    p = TrainingParameter(hp)
+    assert len(p.epochs) == 2
+
+    with pytest.raises(TypeError):
+        hp['random_seed'] = 0.1
+        p = TrainingParameter(hp)
+
+    with pytest.raises(ValueError):
+        hp['random_seed'] = 0
+        p = TrainingParameter(hp)
+
+    with pytest.raises(ValueError):
+        hp['random_seed'] = 10000
+        p = TrainingParameter(hp)
 
 def test_training_callbacks():
     hp = {}

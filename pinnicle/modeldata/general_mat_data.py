@@ -87,7 +87,6 @@ class MatData(DataBase, Constants):
 
         # prepare x,y coordinates
         X_temp = self.get_ice_coordinates()
-        max_data_size = X_temp.shape[0]
 
         # go through all keys in data_dict
         for k in self.data_dict:

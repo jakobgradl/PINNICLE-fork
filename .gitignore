@@ -3,6 +3,11 @@ __pycache__/
 *.py[cod]
 *$py.class
 .coverage
+build/
+PINNICLE.egg-info/
+
+# results file
+*.pt
 
 # Sphinx documentation
 docs/_build/
@@ -10,6 +15,9 @@ docs/build/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+
+# codex
+.codex/
 
 # VSCode
 .vscode/

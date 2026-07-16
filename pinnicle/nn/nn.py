@@ -15,9 +15,19 @@ class FNN:
         # update necesarry parameters for fourier feature transform
         # NOTE: these changes will not be saved to the param file, 
         # so that the change will not accumulate and loading the previous param file will create the same nn
-        if self.parameters.fft :
+        if self.parameters.fft and not self.parameters.time_dependent:
             # Then add an additional layer before the output node
-            self.num_neurons = parameters.num_neurons + [parameters.num_fourier_feature*parameters.sigma_size]
+            self.num_neurons = parameters.num_neurons + [parameters.num_space_fourier_feature*parameters.space_sigma_size]
+            self.num_layers = len(self.num_neurons)
+            # append linear transform for the output
+            self.activation = self.parameters.activation + [None]
+
+        # Merge space and time-dependent Fourier features in second-to-last layer
+        elif self.parameters.fft and self.parameters.time_dependent:
+            # TODO: Point-wise multiplication of Fourier features to merge in second-to-last layer
+            
+            # Add layer before output node
+            self.num_neurons = parameters.num_neurons + [parameters.num_space_fourier_feature*parameters.space_sigma_size + parameters.num_time_fourier_feature*parameters.time_sigma_size]
             self.num_layers = len(self.num_neurons)
             # append linear transform for the output
             self.activation = self.parameters.activation + [None]
@@ -40,18 +50,48 @@ class FNN:
                 self.parameters.input_lb = bkd.as_tensor(self.parameters.input_lb, dtype=default_float_type())
                 self.parameters.input_ub = bkd.as_tensor(self.parameters.input_ub, dtype=default_float_type())
 
-            if self.parameters.fft :
-                print(f"add Fourier feature transform to input transform")
-                if self.parameters.B is not None: 
-                    self.B = bkd.as_tensor(self.parameters.B, dtype=default_float_type())
+            if self.parameters.fft and not self.parameters.time_dependent:
+                print(f"add Fourier feature transform to spatial input transform")
+                if self.parameters.space_B is not None: 
+                    self.space_B = bkd.as_tensor(self.parameters.space_B, dtype=default_float_type())
                 else:
-                    self.B = bkd.as_tensor(
-                            np.reshape(np.random.normal(0.0, self.parameters.sigma, [len(self.parameters.input_variables), self.parameters.num_fourier_feature, self.parameters.sigma_size]), [len(self.parameters.input_variables), self.parameters.num_fourier_feature*self.parameters.sigma_size]),
+                    self.space_B = bkd.as_tensor(
+                            np.reshape(np.random.normal(0.0, self.parameters.space_sigma, [len(self.parameters.input_variables), self.parameters.num_space_fourier_feature, self.parameters.space_sigma_size]), [len(self.parameters.input_variables), self.parameters.num_space_fourier_feature*self.parameters.space_sigma_size]),
                             dtype=default_float_type())
                 def wrapper(x):
-                    """a wrapper function to add fourier feature transform to the input
+                    """a wrapper function to add fourier feature transform to the spatial input
                     """
-                    return fourier_feature(minmax_scale(x, self.parameters.input_lb, self.parameters.input_ub), self.B)
+                    return fourier_feature(minmax_scale(x, self.parameters.input_lb, self.parameters.input_ub), self.space_B)
+                # add to input transform
+                self.net.apply_feature_transform(wrapper)
+            elif self.parameters.fft and self.parameters.time_dependent:
+                print(f"add Fourier feature transform to spatial and temporal input transform")
+                # Spatial features
+                if self.parameters.space_B is not None: 
+                    self.space_B = bkd.as_tensor(self.parameters.space_B, dtype=default_float_type())
+                else:
+                    space_len = len([var for var in self.parameters.input_variables if var == 'x' or var == 'y'])
+                    self.space_B = bkd.as_tensor(
+                            np.reshape(np.random.normal(0.0, self.parameters.space_sigma, [space_len, self.parameters.num_space_fourier_feature, self.parameters.space_sigma_size]), [space_len, self.parameters.num_space_fourier_feature*self.parameters.space_sigma_size]),
+                            dtype=default_float_type())
+                
+                # Temporal features
+                if self.parameters.time_B is not None: 
+                    self.time_B = bkd.as_tensor(self.parameters.time_B, dtype=default_float_type())
+                else:
+                    time_len = len([var for var in self.parameters.input_variables if var == 't'])
+                    self.time_B = bkd.as_tensor(
+                            np.reshape(np.random.normal(0.0, self.parameters.time_sigma, [time_len, self.parameters.num_time_fourier_feature, self.parameters.time_sigma_size]), [time_len, self.parameters.num_time_fourier_feature*self.parameters.time_sigma_size]),
+                            dtype=default_float_type())
+                def wrapper(x):
+                    """a wrapper function to add Fourier feature transform to the spatial and temporal inputs separately
+                    """
+                    x_scaled = minmax_scale(x, self.parameters.input_lb, self.parameters.input_ub)
+                    x_space = x_scaled[:, :space_len]
+                    x_time = x_scaled[:, space_len:]
+                    space_features = fourier_feature(x_space, self.space_B)
+                    time_features = fourier_feature(x_time, self.time_B)
+                    return bkd.concat([space_features, time_features], 1)
                 # add to input transform
                 self.net.apply_feature_transform(wrapper)
             else: 
@@ -115,4 +155,3 @@ class FNN:
         def _wrapper(dummy, x):
             return  func(x, self.parameters.output_lb, self.parameters.output_ub)
         self.net.apply_output_transform(_wrapper)
-

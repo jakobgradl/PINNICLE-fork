@@ -5,9 +5,7 @@ import deepxde as dde
 from deepxde.backend import backend_name
 from pinnicle.utils import data_misfit, plot_nn
 import pytest
-
-dde.config.set_default_float('float64')
-#dde.config.disable_xla_jit()
+import warnings
 
 weights = [7, 7, 5, 5, 3, 3, 5]
 
@@ -27,7 +25,7 @@ loss_weights[3] = loss_weights[3] * yts*yts
 
 hp = {}
 # General parameters
-hp["epochs"] = 10
+hp["epochs"] = [10]
 hp["loss_weights"] = loss_weights
 hp["learning_rate"] = 0.001
 hp["loss_functions"] = "MSE"
@@ -64,6 +62,7 @@ def test_compile_no_data():
     hp_local = dict(hp)
     issm["data_size"] = {}
     hp_local["data"] = {"ISSM":issm}
+    hp_local["random_seed"] = 1234
     experiment = pinn.PINN(params=hp_local)
     experiment.compile()
     assert experiment.loss_names == ['fSSA1', 'fSSA2']
@@ -72,6 +71,37 @@ def test_compile_no_data():
     assert experiment.params.nn.output_ub[0]>0.0
     assert experiment.params.nn.output_lb[1]<0.0
     assert experiment.params.nn.output_ub[1]>0.0
+
+@pytest.mark.skipif(backend_name in ["jax"], reason="L-BFGS is not implemented in deepxde for jax")
+def test_compile_LBFGS():
+    hp_local = dict(hp)
+    issm["data_size"] = {}
+    hp_local["data"] = {"ISSM":issm}
+    hp_local["random_seed"] = 1234
+    hp_local["optimizers"] = "L-BFGS"
+
+    experiment = pinn.PINN(params=hp_local)
+    experiment.compile()
+    assert experiment.model.opt_name == "L-BFGS"
+
+def test_random_seed():
+    with pytest.warns(UserWarning):
+        experiment = pinn.PINN(params=hp)
+        warnings.warn("Random seed is undefined by user (None). Generating random seed...", UserWarning)
+    with pytest.raises(TypeError):
+        hp["random_seed"] = '1234'
+        experiment = pinn.PINN(params=hp)
+    with pytest.raises(ValueError):
+        hp["random_seed"] = -1
+        experiment = pinn.PINN(params=hp)
+    with pytest.raises(ValueError):
+        hp["random_seed"] = 10000
+        experiment = pinn.PINN(params=hp)
+    hp["random_seed"] = 1234
+    experiment = pinn.PINN(params=hp)
+    experiment.compile()
+    assert type(experiment.params.training.random_seed) == int
+    assert experiment.params.training.random_seed == 1234
 
 def test_add_loss():
     hp_local = dict(hp)
@@ -129,6 +159,40 @@ def test_update_parameters():
     experiment.update_parameters({"add_param": 2})
     assert experiment.params.param_dict["add_param"] == 2
 
+@pytest.mark.skipif(backend_name in ["jax"], reason="save model is not implemented in deepxde for jax")
+def test_find_closest_model_file(tmp_path):
+    experiment = pinn.PINN(params=hp)
+    model_dir = tmp_path / "pinn"
+    with pytest.raises(FileNotFoundError):
+        experiment.find_closest_model_file(tmp_path)
+
+    model_dir.mkdir()
+
+    with pytest.raises(FileNotFoundError):
+        experiment.find_closest_model_file(
+            path=tmp_path,
+            subfolder="pinn",
+            name="model",
+            epochs=500,
+            fileformat=extension,
+            )
+
+    (model_dir / f"model-1000.{extension}").touch()
+    result = experiment.find_closest_model_file(
+        path=tmp_path,
+        epochs=2000,
+        fileformat=extension,
+    )
+    assert result == str(model_dir / f"model-1000.{extension}")
+
+    (model_dir / f"model-2000.{extension}").touch()
+    result = experiment.find_closest_model_file(
+            path=tmp_path,
+            epochs=2000,
+            fileformat=extension,
+            )
+    assert result == str(model_dir / f"model-2000.{extension}")
+
 def test_train_only_data():
     hp_local = dict(hp)
     hp_local["is_parallel"] = False
@@ -160,6 +224,21 @@ def test_train():
     experiment.train()
     assert experiment.loss_names == ['fSSA1', 'fSSA2', 'u', 'v', 's', 'H', 'C']
 
+@pytest.mark.skipif(backend_name in ["jax"], reason="L-BFGS is not implemented in deepxde for jax")
+def test_train_series():
+    hp_local = dict(hp)
+    hp_local["is_save"] = False
+    hp_local["num_collocation_points"] = 100
+    issm["data_size"] = {"u":100, "v":100, "s":100, "H":100, "C":None}
+    hp_local["data"] = {"ISSM Light": issm}
+    hp_local["equations"] = {"SSA":SSA}
+    hp_local["epochs"] = [10, 10]
+    hp_local["optimizers"] = ["adam", "L-BFGS"]
+    experiment = pinn.PINN(params=hp_local)
+    experiment.compile()
+    experiment.train()
+    assert experiment.loss_names == ['fSSA1', 'fSSA2', 'u', 'v', 's', 'H', 'C']
+
 @pytest.mark.skipif(backend_name in ["jax"], reason="inverse time decay is not implemented in deepxde for jax")
 def test_train_decay():
     hp_local = dict(hp)
@@ -182,23 +261,58 @@ def test_fft_training(tmp_path):
     hp_local["is_save"] = True
     hp_local["save_path"] = str(tmp_path)
     hp_local["num_collocation_points"] = 10
-    hp_local["sigma"] = [1.0, 10.0]
+    hp_local["space_sigma"] = [1.0, 10.0]
     issm["data_size"] = {"u":10, "v":10, "s":10, "H":10, "C":None}
     hp_local["data"] = {"ISSM": issm}
     hp_local["equations"] = {"SSA":SSA}
+    hp_local["epochs"] = 10
     experiment = pinn.PINN(params=hp_local)
     experiment.save_setting(path=tmp_path)
     assert experiment.params.param_dict == experiment.load_setting(path=tmp_path)
-    assert experiment.params.nn.B is None
+    assert experiment.params.nn.space_B is None
     assert os.path.isdir(f"{tmp_path}/pinn/")
     experiment2 = pinn.PINN(loadFrom=tmp_path)
     assert experiment.params.param_dict == experiment2.params.param_dict
-    assert len(experiment2.params.nn.B) == 2
-    assert len(experiment2.params.nn.B[1]) == 20    
+    assert len(experiment2.params.nn.space_B) == 2
+    assert len(experiment2.params.nn.space_B[1]) == 20    
     assert experiment2.params.nn.num_layers == 4
     experiment.compile()
-    experiment.train()
+    experiment.train(iterations=10)
     assert experiment.loss_names == ['fSSA1', 'fSSA2', 'u', 'v', 's', 'H', 'C']
+    experiment.load_model(path=tmp_path, epochs=hp_local['epochs'])
+    
+@pytest.mark.skipif(backend_name in ["jax"], reason="There is a bug in deepxde (jax backend), when assigning a list of activation function, it reads in as a tuple!")
+def test_fft_timedependent_training(tmp_path):
+    hp_local = dict(hp)
+    hp_local['fft'] = True
+    hp_local["time_dependent"] = True
+    hp_local["is_save"] = True
+    hp_local["save_path"] = str(tmp_path)
+    hp_local["num_collocation_points"] = 10
+    hp_local["space_sigma"] = [1.0, 10.0]
+    hp_local["time_sigma"] = [1.0, 10.0]
+    hp_local["start_time"] = 0
+    hp_local["end_time"] = 1
+    issm["data_size"] = {"u":10, "v":10, "H":10}
+    hp_local["data"] = {"ISSM": issm}
+    hp_local["equations"] = {"Mass transport":{}}
+    hp_local["epochs"] = 10
+    experiment = pinn.PINN(params=hp_local)
+    experiment.save_setting(path=tmp_path)
+    assert experiment.params.param_dict == experiment.load_setting(path=tmp_path)
+    assert experiment.params.nn.space_B is None
+    assert experiment.params.nn.time_B is None
+    assert os.path.isdir(f"{tmp_path}/pinn/")
+    experiment2 = pinn.PINN(loadFrom=tmp_path)
+    assert experiment.params.param_dict == experiment2.params.param_dict
+    assert len(experiment2.params.nn.space_B) == 2
+    assert len(experiment2.params.nn.space_B[1]) == 20 
+    assert len(experiment2.params.nn.time_B) == 1
+    assert len(experiment2.params.nn.time_B[0]) == 20     
+    assert experiment2.params.nn.num_layers == 4
+    experiment.compile()
+    experiment.train(iterations=10)
+    assert experiment.loss_names == ['fMass transport', 'u', 'v', 'H']
     experiment.load_model(path=tmp_path, epochs=hp_local['epochs'])
 
 @pytest.mark.skipif(backend_name in ["jax"], reason="calving front boundary is not implemented for jax")
@@ -265,6 +379,7 @@ def test_save_and_load_train(tmp_path):
     issm["data_size"] = {"u":10, "v":10, "s":10, "H":10, "C":None, "vel":10}
     hp_local["data"] = {"ISSM": issm}
     hp_local["is_parallel"] = False
+    hp_local["epochs"] = [10]
     # additional loss
     vel_loss = {}
     vel_loss['name'] = "vel log"
@@ -275,9 +390,9 @@ def test_save_and_load_train(tmp_path):
     experiment.compile()
     experiment.train()
     assert experiment.loss_names == ['fSSA1', 'fSSA2', 'u', 'v', 's', 'H', 'C', "vel log"]
-    assert os.path.isfile(f"{tmp_path}/pinn/model-{hp_local['epochs']}.{extension}")
+    assert os.path.isfile(f"{tmp_path}/pinn/model-10.{extension}")
     experiment_load = pinn.PINN(params=hp_local)
-    experiment_load.load_model(path=tmp_path, epochs=hp_local['epochs'])
+    experiment_load.load_model(path=tmp_path, fileformat=extension)
     assert np.all(experiment_load.model.predict(experiment.model_data.X['u'])==experiment.model.predict(experiment.model_data.X['u']))
 
 @pytest.mark.skipif(backend_name in ["jax"], reason="save model is not implemented in deepxde for jax")

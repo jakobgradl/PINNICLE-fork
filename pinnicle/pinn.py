@@ -1,8 +1,11 @@
 import os
 import glob
+import re
 import deepxde as dde
 import numpy as np
+import warnings
 
+from pathlib import Path
 from .utils import save_dict_to_json, load_dict_from_json, History, plot_solutions, data_misfit
 from .nn import FNN
 from .physics import Physics
@@ -25,8 +28,27 @@ class PINN:
 
         self.params = Parameters(params)
 
+        # initialize random seed
+        print('Configuring random seed: '+str(self.params.training.random_seed))
+        dde.config.set_random_seed(self.params.training.random_seed)
+
         # set up the model according to self.params
-        self.setup()
+        self.setup() 
+
+    def apply_transfer_learning(self, cfg=None):
+        """load pretrained weights + freeze parameters based on cfg
+
+        cfg can be:
+        -dict (from params.param_dict["transfer_learning"])
+        -object with attributes (enabled, weights_path, freeze,etc)
+        """
+        from .utils.transfer_learning import apply_transfer_learning as _apply
+
+        if cfg is None:
+            #use parameter parsing logic from the model instead of PyTorch
+            cfg = getattr(self.params, "param_dict", {}).get("transfer_learning", None)
+
+        return _apply(self, cfg)
 
     def check_path(self, path, loadOnly=False):
         """check the path, set to default, and create folder if needed
@@ -38,12 +60,19 @@ class PINN:
             os.makedirs(path, exist_ok=True)
         return path
 
-    def compile(self, opt=None, loss=None, lr=None, loss_weights=None, decay=None):
-        """ compile the model  
+    def compile(self, opt=None, epochs=None, loss=None, lr=None, loss_weights=None, decay=None):
+        """ compile the model, the main purpose is to check if the current setting works for the training 
         """
-        # load from params
+
         if opt is None:
-            opt = self.params.training.optimizer
+            opt = self.params.training.optimizers[0]
+
+        if epochs is None:
+            epochs = self.params.training.epochs[0]
+
+        # if start with L-BFGS
+        if opt == "L-BFGS":
+            dde.optimizers.config.set_LBFGS_options(maxiter=epochs)
 
         if loss is None:
             loss = self.params.training.loss_functions
@@ -60,24 +89,83 @@ class PINN:
         # compile the model
         self.model.compile(opt, loss=loss, lr=lr, decay=decay, loss_weights=loss_weights)
 
-    def load_model(self, path="", epochs=-1, subfolder="pinn", name="model", fileformat=""):
-        """laod the neural network from saved model
+    def find_closest_model_file(self, path, subfolder="pinn", name="model", epochs=0, fileformat=""):
         """
+        Find files in {path}/{subfolder}/ with filename format:
+    
+            {name}-{integer_epoch}.{extension}
+    
+        Then return the file with the largest integer_epoch <= epochs.
+        
+        If file not found, will chose a backup model such that the difference
+        in epochs is a tenth of the number of training epochs
+        """
+    
+        model_dir = Path(path) / subfolder
+    
+        if not model_dir.exists():
+            raise FileNotFoundError(f"Model directory does not exist: {model_dir}")
+    
+        # Match filenames like model-1000.keras, model-2000.h5, etc.
+        if fileformat:
+            fileformat = fileformat.lstrip(".")
+            regex = re.compile(rf"^{re.escape(name)}-(\d+)\.{re.escape(fileformat)}$")
+        else:
+            regex = re.compile(rf"^{re.escape(name)}-(\d+)\.(.+)$")
+    
+        candidates = []
+        epochdiff = np.inf
+
+        for file in model_dir.glob(f"{name}-*.*"):
+            match = regex.match(file.name)
+            if match is None:
+                continue
+    
+            file_epochs = int(match.group(1))
+    
+            if file_epochs <= epochs:
+                candidates.append((file_epochs, file))
+
+            if abs(file_epochs-epochs) < epochdiff:
+                backup_candidate = (file_epochs, file)
+                epochdiff = abs(file_epochs - epochs)
+    
+        if not candidates:
+            if epochdiff < epochs//10:
+                candidates.append(backup_candidate)
+            else:
+                raise FileNotFoundError(
+                    f"No model file found in {model_dir} with format "
+                    f"{name}-<epochs>.<extension> and epochs <= {epochs}"
+                )
+
+        # Pick the largest epoch that is <= epochs
+        best_epochs, best_file = max(candidates, key=lambda x: x[0])
+    
+        return str(best_file)
+
+    def load_model(self, path="", epochs=-1, subfolder="pinn", name="model", fileformat=""):
+        """load the neural network from saved model
+        """
+        # take the final epochs
         if epochs == -1:
-            epochs = self.params.training.epochs
+            epochs = sum(self.params.training.epochs)
 
         # get the path
         path = self.check_path(path, loadOnly=True)
 
-        # find the model file 
-        if fileformat == "":
-            filename = glob.glob(f"{path}/{subfolder}/{name}-{epochs}.*")[0]
-        else:
-            filename = f"{path}/{subfolder}/{name}-{epochs}.{fileformat}"
+        filename = self.find_closest_model_file(
+            path=path,
+            subfolder=subfolder,
+            name=name,
+            epochs=epochs,
+            fileformat=fileformat,
+        )
 
-        # TODO: remove this step
+        # TODO: improve this step
         # need to predict once, otherwise the weights can not be restored to the nn
-        self.compile()
+        # use the last optimizer to compile
+        self.compile(opt=self.params.training.optimizers[-1])
         self.model.predict(np.zeros([1, len(self.params.nn.input_variables)]))
 
         # now the weights can be loaded
@@ -85,7 +173,9 @@ class PINN:
             self.model.restore(filename, device=dde.backend.torch.get_default_device())
         else:
             self.model.restore(filename)
-        self.compile()
+        
+        # compile again just to prepare for later use
+        self.compile(opt=self.params.training.optimizers[-1])
 
     def load_setting(self, path="", filename="params.json"):
         """ load the settings from file
@@ -169,17 +259,37 @@ class PINN:
         # define the neural network in use
         self.nn = FNN(self.params.nn)
         # save B if it is not defined by the user and generated by FFT
-        if (self.params.nn.B is None) and (self.params.nn.fft):
-            self.params.param_dict.update({"B": dde.backend.to_numpy(self.nn.B).tolist()})
+        if (self.params.nn.space_B is None) and (self.params.nn.fft) and not (self.params.nn.time_dependent):
+            self.params.param_dict.update({"space_B": dde.backend.to_numpy(self.nn.space_B).tolist()})
+        # Save time B if time-dependent FFT
+        if (self.params.nn.time_B is None) and (self.params.nn.fft) and (self.params.nn.time_dependent):
+            self.params.param_dict.update({"space_B": dde.backend.to_numpy(self.nn.space_B).tolist()})
+            self.params.param_dict.update({"time_B": dde.backend.to_numpy(self.nn.time_B).tolist()})
 
         # Step 7: setup the deepxde PINN model
         self.model = dde.Model(self.dde_data, self.nn.net)
 
+        # Run transfer learning automatically if enabled
+        tl_cfg = None
+        if hasattr(self, "params") and hasattr(self.params, "param_dict"):
+            tl_cfg = self.params.param_dict.get("transfer_learning", None)
+
+        if isinstance(tl_cfg, dict) and tl_cfg.get("enabled", False):
+            # Only auto run if the method exists 
+            if hasattr(self, "apply_transfer_learning") and callable(getattr(self, "apply_transfer_learning")):
+                # Only attempt the torch "materialize params" if torch is available
+                try:
+                    import torch
+                    in_dim = len(self.params.nn.input_variables)
+                    _ = self.model.net(torch.zeros((1, in_dim), dtype=torch.float32))
+                except Exception:
+                    pass
+
+                self.apply_transfer_learning(tl_cfg)
+            
     def train(self, iterations=0):
         """ train the model
         """
-        if iterations == 0:
-            iterations = self.params.training.epochs
         # save settings before training
         if self.params.training.is_save:
             self.save_setting()
@@ -188,9 +298,19 @@ class PINN:
         callbacks = self.update_callbacks()
 
         # start training
-        self._loss_history, self._train_state = self.model.train(iterations=iterations,
-                display_every=100, disregard_previous_best=True, callbacks=callbacks)
-        
+        if iterations == 0:
+            iterations = self.params.training.epochs
+
+        # make the input iteration to be a list
+        if isinstance(iterations, int):
+            iterations = [iterations]
+
+        for it, opt in zip(iterations, self.params.training.optimizers):
+            self.compile(opt=opt, epochs=it)
+            self._loss_history, self._train_state = self.model.train(iterations=it, 
+                                                                     display_every=10000, 
+                                                                     disregard_previous_best=True, 
+                                                                     callbacks=callbacks)
         # prepare history
         self.history = History(self._loss_history, self.loss_names)
 
@@ -420,3 +540,4 @@ class PINN:
         # wrap output_lb and output_ub with np.array
         self.params.nn.output_lb = np.array(self.params.nn.output_lb)
         self.params.nn.output_ub = np.array(self.params.nn.output_ub)
+        
