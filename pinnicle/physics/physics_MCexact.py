@@ -9,8 +9,7 @@ from ..utils import slice_column, jacobian, ppow, default_float_type
 import torch
 
 ###################################
-
-### basic functions
+### primary function classes
 
 # function for exact solution of mass conservation equation {{{
 class MCexactEquationParameter(EquationParameter, Constants):
@@ -134,6 +133,11 @@ class MC_exact_Helmholtz(EquationBase): #{{{
     #}}}
 #}}}
 
+
+##################################
+### additional paramters
+
+# sliding parameter for Lliboutry model
 class LliboutrySlidingEquationParameter(EquationParameter, Constants):
     """ default parameters for mass conservation
     """
@@ -169,6 +173,7 @@ class Lliboutry_sliding(EquationBase): #{{{
     #}}}
 #}}}
 
+# deformation parameter for Lliboutry model
 class LliboutryShearEquationParameter(EquationParameter, Constants):
     """ default parameters for mass conservation
     """
@@ -204,6 +209,7 @@ class Lliboutry_shear(EquationBase): #{{{
     #}}}
 #}}}
 
+# additional dissipative field, separate smb and dHdt
 class DdHEquationParameter(EquationParameter, Constants):
     """ default parameters for mass conservation
     """
@@ -240,6 +246,7 @@ class DdH(EquationBase): #{{{
     #}}}
 #}}}
 
+# add output variables for SSA
 class SSAweakEquationParamter(EquationParameter, Constants):
     """default parameters for SSA_exact
     """
@@ -289,6 +296,11 @@ class SSA_weak(EquationBase): #{{{
         pass
 #}}}
 
+
+####################################
+### regularisation functions
+
+# regularise gradient of sliding parameter in Lliboutry model
 class REGUPEquationParameter(EquationParameter, Constants):
     """ default parameters for mass conservation
     """
@@ -377,6 +389,7 @@ class REGU_P(EquationBase): #{{{
     #}}}
 #}}}
 
+# regularise gradient of deformation parameter in Lliboutry model
 class REGUNEquationParameter(EquationParameter, Constants):
     """ default parameters for mass conservation
     """
@@ -467,6 +480,7 @@ class REGU_N(EquationBase): #{{{
     #}}}
 #}}}
 
+# regularise magnitude of deformation parameter in Lliboutry model
 class REGUNmagEquationParameter(EquationParameter, Constants):
     """ default parameters for mass conservation
     """
@@ -523,6 +537,13 @@ class REGU_Nmag(EquationBase): #{{{
 #}}}
 
 
+
+
+
+
+##################################
+##################################
+### Physics
 
 class MC_EXACT:
     """ all the physics used for the helmholtz decomposition of the mass-flux vector field
@@ -1335,7 +1356,7 @@ class MC_EXACT:
     def effective_strain_rate_Lliboutry(self, nn_input_var, nn_output_var, frac_depth):
         xid = self.input_var.index('x')
         yid = self.input_var.index('y')
-        n = get_n(self,nn_input_var, nn_output_var)
+        n = self.get_n(self,nn_input_var, nn_output_var)
         u_base = self.u_base_MC_MOLHO(nn_input_var, nn_output_var, None)
         v_base = self.v_base_MC_MOLHO(nn_input_var, nn_output_var, None)
         u_shear = self.u_shear_MC_MOLHO(nn_input_var, nn_output_var, None)
