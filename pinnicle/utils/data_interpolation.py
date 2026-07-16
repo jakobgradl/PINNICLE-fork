@@ -125,8 +125,8 @@ def find_subdomains_with_mask(
         Nx (int): Number of subdomains in x.
         Ny (int): Number of subdomains in y.
     """
-    Nx = int(Lx // dx)
-    Ny = int(Ly // dy)
+    Nx = int(np.ceil(Lx / dx))
+    Ny = int(np.ceil(Ly / dy))
 
     xmax = xmin + Nx * dx
     ymax = ymin + Ny * dy
