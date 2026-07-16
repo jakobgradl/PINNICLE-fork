@@ -5,7 +5,9 @@ from . import EquationBase
 import itertools
 from ..utils import slice_column, jacobian, ppow, default_float_type
 
-class Physics:
+from .physics_MCexact import MC_EXACT
+
+class Physics(MC_EXACT):
     """ All the physics in used as constraint in the PINN
     """
     def __init__(self, parameters=PhysicsParameter()):
@@ -145,4 +147,3 @@ class Physics:
         for p in self.equations:
             if p._EQUATION_TYPE.lower() == pname.lower():
                 return p.pde
-
