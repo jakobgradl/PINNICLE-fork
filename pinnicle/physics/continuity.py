@@ -468,259 +468,6 @@ class DdH(EquationBase): #{{{
 
 
 
-# D-HNN exact mass conservation {{{
-class MCSSAEquationParameter(EquationParameter, Constants):
-    """ default parameters for mass conservation
-    """
-    _EQUATION_TYPE = 'MC_SSA' 
-    def __init__(self, param_dict={}):
-        # load necessary constants
-        Constants.__init__(self)
-        super().__init__(param_dict)
-
-    def set_default(self):
-        self.input = ['x', 'y']
-        self.output = ['D_smb','D_dH','R', 'H']
-        self.output_lb = [self.variable_lb[k] for k in self.output]
-        self.output_ub = [self.variable_ub[k] for k in self.output]
-        self.data_weights = [1.0, 1.0, 1.0, 1.0e-3]
-        self.residuals = []
-        self.pde_weights = []
-
-        # scalar variables: name:value
-        self.scalar_variables = {}
-class MC_SSA(EquationBase): #{{{
-    """ MC on 2D problem
-
-        for domains with negligible smb and dH/dt
-
-        u,v,a are defined based on two scalar fields D,R
-        in a way that automatically satisfies the MC
-    """
-    _EQUATION_TYPE = 'MC_SSA' 
-    def __init__(self, parameters=MCSSAEquationParameter()):
-        super().__init__(parameters)
-
-    def _pde(self, nn_input_var, nn_output_var): #{{{
-        """ no pde loss required
-            use data losses vel_mag_MC, u_MC, v_MC, a_MC
-
-        Args:
-            nn_input_var: global input to the nn
-            nn_output_var: global output from the nn
-        """
-        Hid = self.local_output_var["H"]
-        H = slice_column(nn_output_var, Hid)
-
-        return [] #}}}
-    
-    def _pde_jax(self, nn_input_var, nn_output_var): #{{{
-        """ residual of MC 2D PDE, jax version
-
-        Args:
-            nn_input_var: global input to the nn
-            nn_output_var: global output from the nn
-        """
-        return self._pde(nn_input_var, nn_output_var) #}}}
-    #}}}
-#}}}
-
-
-
-
-# D-HNN exact mass conservation {{{
-class MCSSASteadyEquationParameter(EquationParameter, Constants):
-    """ default parameters for mass conservation
-    """
-    _EQUATION_TYPE = 'MC_SSA_steady' 
-    def __init__(self, param_dict={}):
-        # load necessary constants
-        Constants.__init__(self)
-        super().__init__(param_dict)
-
-    def set_default(self):
-        self.input = ['x', 'y']
-        self.output = ['R', 'H']
-        self.output_lb = [self.variable_lb[k] for k in self.output]
-        self.output_ub = [self.variable_ub[k] for k in self.output]
-        self.data_weights = [1.0, 1.0e-3]
-        self.residuals = []
-        self.pde_weights = []
-
-        # scalar variables: name:value
-        self.scalar_variables = {}
-class MC_SSA_steady(EquationBase): #{{{
-    """ MC on 2D problem
-
-        for domains with negligible smb and dH/dt
-
-        u,v,a are defined based on two scalar fields D,R
-        in a way that automatically satisfies the MC
-    """
-    _EQUATION_TYPE = 'MC_SSA_steady' 
-    def __init__(self, parameters=MCSSASteadyEquationParameter()):
-        super().__init__(parameters)
-
-    def _pde(self, nn_input_var, nn_output_var): #{{{
-        """ no pde loss required
-            use data losses vel_mag_MC, u_MC, v_MC, a_MC
-
-        Args:
-            nn_input_var: global input to the nn
-            nn_output_var: global output from the nn
-        """
-        return [] #}}}
-    
-    def _pde_jax(self, nn_input_var, nn_output_var): #{{{
-        """ residual of MC 2D PDE, jax version
-
-        Args:
-            nn_input_var: global input to the nn
-            nn_output_var: global output from the nn
-        """
-        return self._pde(nn_input_var, nn_output_var) #}}}
-    #}}}
-#}}}
-
-
-
-# D-HNN exact mass conservation resolving vertical velocity profile compatible with MOLHO {{{
-class MCMOLHOEquationParameter(EquationParameter, Constants):
-    """ default parameters for mass conservation
-    """
-    _EQUATION_TYPE = 'MC_MOLHO' 
-    def __init__(self, param_dict={}):
-        # load necessary constants
-        Constants.__init__(self)
-        super().__init__(param_dict)
-
-    def set_default(self):
-        self.input = ['x', 'y']
-        # self.output = ['D_smb', 'D_dH', 'R', 'H', 'p']#, 'n']
-        self.output = ['D_smb', 'R', 'H', 'p']#, 'n']
-        self.output_lb = [self.variable_lb[k] for k in self.output]
-        self.output_ub = [self.variable_ub[k] for k in self.output]
-        self.output_lb[2] = -2.
-        self.output_ub[2] = 8.5
-        # self.data_weights = [1.0]*3 + [1.0e-3, 1.0]#, 1.0]
-        self.data_weights = [1.0]*2 + [1.0e-3, 1.0]#, 1.0]
-        self.residuals = []
-        self.pde_weights = []
-
-        # scalar variables: name:value
-        self.scalar_variables = {'n': 3.0,
-                                 'vub': 200.0/self.yts,
-                                 'vlb': 30.0/self.yts,
-                                 }
-        # self.scalar_variables = {}
-class MC_MOLHO(EquationBase): #{{{
-    """ MC on 2D problem
-
-        u,v,a are defined based on two scalar fields D,R
-        in a way that automatically satisfies the MC
-
-        p describes the relative contributions of basal and shear velocities
-        to the surface velocity 
-
-        surface velocity is derived from the depth-averaged velocity according to MOLHO
-
-        vub, vlb are upper and lower velocity bounds for BCs on p
-    """
-    _EQUATION_TYPE = 'MC_MOLHO' 
-    def __init__(self, parameters=MCMOLHOEquationParameter()):
-        super().__init__(parameters)
-
-    def _pde(self, nn_input_var, nn_output_var): #{{{
-        """ no pde loss required for mass conservation
-            use data losses vel_mag_MC, u_MC, v_MC, a_MC
-
-        Args:
-            nn_input_var: global input to the nn
-            nn_output_var: global output from the nn
-        """
-        return [] #}}}
-    
-    def _pde_jax(self, nn_input_var, nn_output_var): #{{{
-        """ residual of MC 2D PDE, jax version
-
-        Args:
-            nn_input_var: global input to the nn
-            nn_output_var: global output from the nn
-        """
-        return self._pde(nn_input_var, nn_output_var) #}}}
-    #}}}
-#}}}
-
-
-# D-HNN exact mass conservation resolving vertical velocity profile compatible with MOLHO {{{
-class MCLLIBOUTRYEquationParameter(EquationParameter, Constants):
-    """ default parameters for mass conservation
-    """
-    _EQUATION_TYPE = 'MC_LLIBOUTRY' 
-    def __init__(self, param_dict={}):
-        # load necessary constants
-        Constants.__init__(self)
-        super().__init__(param_dict)
-
-    def set_default(self):
-        self.input = ['x', 'y']
-        # self.output = ['D_smb', 'D_dH', 'R', 'H', 'p']#, 'n']
-        self.output = ['D_smb', 'R', 'H', 'n']#, 'p']
-        self.output_lb = [self.variable_lb[k] for k in self.output]
-        self.output_ub = [self.variable_ub[k] for k in self.output]
-        # self.data_weights = [1.0]*3 + [1.0e-3, 1.0]#, 1.0]
-        self.data_weights = [1.0]*2 + [1.0e-3, 1.0]#, 1.0]
-        self.residuals = []
-        self.pde_weights = []
-
-        # scalar variables: name:value
-        self.scalar_variables = {
-                                 'p': 1e-30,
-                                 'nlb': 3.,
-                                 'nub': 100.,
-                                 'vub': 100.0/self.yts,
-                                 'vlb': 25.0/self.yts,
-                                 }
-        # self.scalar_variables = {}
-class MC_LLIBOUTRY(EquationBase): #{{{
-    """ MC on 2D problem
-
-        u,v,a are defined based on two scalar fields D,R
-        in a way that automatically satisfies the MC
-
-        p describes the relative contributions of basal and shear velocities
-        to the surface velocity 
-
-        surface velocity is derived from the depth-averaged velocity according to MOLHO
-
-        vub, vlb are upper and lower velocity bounds for BCs on p
-    """
-    _EQUATION_TYPE = 'MC_LLIBOUTRY' 
-    def __init__(self, parameters=MCLLIBOUTRYEquationParameter()):
-        super().__init__(parameters)
-
-    def _pde(self, nn_input_var, nn_output_var): #{{{
-        """ no pde loss required for mass conservation
-            use data losses vel_mag_MC, u_MC, v_MC, a_MC
-
-        Args:
-            nn_input_var: global input to the nn
-            nn_output_var: global output from the nn
-        """
-        return [] #}}}
-    
-    def _pde_jax(self, nn_input_var, nn_output_var): #{{{
-        """ residual of MC 2D PDE, jax version
-
-        Args:
-            nn_input_var: global input to the nn
-            nn_output_var: global output from the nn
-        """
-        return self._pde(nn_input_var, nn_output_var) #}}}
-    #}}}
-#}}}
-
-
 # D-HNN exact mass conservation resolving vertical velocity profile through MOLHO {{{
 class REGUPEquationParameter(EquationParameter, Constants):
     """ default parameters for mass conservation
@@ -733,18 +480,21 @@ class REGUPEquationParameter(EquationParameter, Constants):
 
     def set_default(self):
         self.input = ['x', 'y']
-        self.output = ['D_smb', 'D_dH', 'R', 'H', 'p']#, 'n']
+        self.output = ['D_smb', 'R', 'H', 'p']
         self.output_lb = [self.variable_lb[k] for k in self.output]
         self.output_ub = [self.variable_ub[k] for k in self.output]
-        self.data_weights = [1.0]*3 + [1.0e-3, 1.0]#, 1.0]
+        self.output_lb[2] = -2.
+        self.output_ub[2] = 8.5
+        self.data_weights = [1.0]*2 + [1.0e-3] + [1.0]
         self.residuals = ["f"+self._EQUATION_TYPE]
-        self.pde_weights = [1.0e0]
+        self.pde_weights = [1.0e12]
 
         # scalar variables: name:value
         self.scalar_variables = {}
 class REGU_P(EquationBase): #{{{
-    """ Regularisation for MC_MOLHO
-        applies regularisation on along-flow gradient of p (non-negative)
+    """ Regularisation for Lliboutry_Sliding
+        applies regularisation on along-flow gradient of p
+        gradient must be non-negative (p cannot decrease along flow)
     """
     _EQUATION_TYPE = 'REGU_P' 
     def __init__(self, parameters=REGUPEquationParameter()):
@@ -762,7 +512,7 @@ class REGU_P(EquationBase): #{{{
         yid = self.local_input_var["y"]
 
         Dsmbid = self.local_output_var["D_smb"]
-        DdHid = self.local_output_var["D_dH"]
+        # DdHid = self.local_output_var["D_dH"]
         Rid = self.local_output_var["R"]
         pid = self.local_output_var["p"]
         Hid = self.local_output_var["H"]
@@ -772,18 +522,18 @@ class REGU_P(EquationBase): #{{{
         p1 = slice_column(nn_output_var, pid)
         p = bkd.sigmoid(p1) # p in [0,1]
 
-        u_mf = (jacobian(nn_output_var,nn_input_var,i=Dsmbid,j=xid) + 
-                jacobian(nn_output_var,nn_input_var,i=DdHid,j=xid) - 
+        u_mf = (jacobian(nn_output_var,nn_input_var,i=Dsmbid,j=xid) - #+ 
+                # jacobian(nn_output_var,nn_input_var,i=DdHid,j=xid) - 
                 jacobian(nn_output_var,nn_input_var,i=Rid,j=yid))
         
-        v_mf = (jacobian(nn_output_var,nn_input_var,i=Dsmbid,j=yid) + 
-                jacobian(nn_output_var,nn_input_var,i=DdHid,j=yid) - 
+        v_mf = (jacobian(nn_output_var,nn_input_var,i=Dsmbid,j=yid) - #+ 
+                # jacobian(nn_output_var,nn_input_var,i=DdHid,j=yid) - 
                 jacobian(nn_output_var,nn_input_var,i=Rid,j=xid))
         
         u_bar = u_mf / H
         v_bar = v_mf / H
         
-        u_mag = (u_bar**2 + v_bar**2)**0.5
+        u_mag = (u_bar**2 + v_bar**2 + (1e-30)**2)**0.5
         
         p_x = jacobian(p, nn_input_var, i=0, j=xid)
         p_y = jacobian(p, nn_input_var, i=0, j=yid)
@@ -793,6 +543,153 @@ class REGU_P(EquationBase): #{{{
 
         # return loss if p_dirdev is negative, zero loss otherwise
         f = bkd.relu(-1 * p_dirdev)
+
+        return [f] #}}}
+    
+    def _pde_jax(self, nn_input_var, nn_output_var): #{{{
+        """ residual of MC 2D PDE, jax version
+
+        Args:
+            nn_input_var: global input to the nn
+            nn_output_var: global output from the nn
+        """
+        return self._pde(nn_input_var, nn_output_var) #}}}
+    #}}}
+#}}}
+
+
+class REGUNEquationParameter(EquationParameter, Constants):
+    """ default parameters for mass conservation
+    """
+    _EQUATION_TYPE = 'REGU_N' 
+    def __init__(self, param_dict={}):
+        # load necessary constants
+        Constants.__init__(self)
+        super().__init__(param_dict)
+
+    def set_default(self):
+        self.input = ['x', 'y']
+        self.output = ['D_smb', 'R', 'H', 'n']
+        self.output_lb = [self.variable_lb[k] for k in self.output]
+        self.output_ub = [self.variable_ub[k] for k in self.output]
+        self.output_lb[2] = -2.
+        self.output_ub[2] = 8.5
+        self.data_weights = [1.0]*2 + [1.0e-3] + [1.0]
+        self.residuals = ["f"+self._EQUATION_TYPE]
+        self.pde_weights = [1.0e12]
+
+        # scalar variables: name:value
+        self.scalar_variables = {}
+class REGU_N(EquationBase): #{{{
+    """ Regularisation for Lliboutry_Shear
+        applies regularisation on along-flow gradient of n
+        gradient must be non-negative (n cannot decrease along flow)
+    """
+    _EQUATION_TYPE = 'REGU_N' 
+    def __init__(self, parameters=REGUNEquationParameter()):
+        super().__init__(parameters)
+
+    def _pde(self, nn_input_var, nn_output_var): #{{{
+        """ pde loss is used as regularisation on p
+            (penalise when p decreases along flow)
+            
+        Args:
+            nn_input_var: global input to the nn
+            nn_output_var: global output from the nn
+        """
+        xid = self.local_input_var["x"]
+        yid = self.local_input_var["y"]
+
+        Dsmbid = self.local_output_var["D_smb"]
+        # DdHid = self.local_output_var["D_dH"]
+        Rid = self.local_output_var["R"]
+        nid = self.local_output_var["n"]
+        Hid = self.local_output_var["H"]
+
+        H = slice_column(nn_output_var, Hid)
+
+        n1 = slice_column(nn_output_var, nid)
+        a = 3 
+        b = 18 
+        n = (b-a) * bkd.sigmoid(n1) + a
+
+        u_mf = (jacobian(nn_output_var,nn_input_var,i=Dsmbid,j=xid) - #+ 
+                # jacobian(nn_output_var,nn_input_var,i=DdHid,j=xid) - 
+                jacobian(nn_output_var,nn_input_var,i=Rid,j=yid))
+        
+        v_mf = (jacobian(nn_output_var,nn_input_var,i=Dsmbid,j=yid) - #+ 
+                # jacobian(nn_output_var,nn_input_var,i=DdHid,j=yid) - 
+                jacobian(nn_output_var,nn_input_var,i=Rid,j=xid))
+        
+        u_bar = u_mf / H
+        v_bar = v_mf / H
+        
+        u_mag = (u_bar**2 + v_bar**2)**0.5
+        
+        n_x = jacobian(n, nn_input_var, i=0, j=xid)
+        n_y = jacobian(n, nn_input_var, i=0, j=yid)
+
+        # directional derivative of p in direction of velocity vector
+        n_dirdev = n_x*(u_mf/u_mag) + n_y*(v_mf/u_mag)
+
+        # return loss if p_dirdev is negative, zero loss otherwise
+        f = bkd.relu(-1 * n_dirdev)
+
+        return [f] #}}}
+    
+    def _pde_jax(self, nn_input_var, nn_output_var): #{{{
+        """ residual of MC 2D PDE, jax version
+
+        Args:
+            nn_input_var: global input to the nn
+            nn_output_var: global output from the nn
+        """
+        return self._pde(nn_input_var, nn_output_var) #}}}
+    #}}}
+#}}}
+
+
+class REGUNmagEquationParameter(EquationParameter, Constants):
+    """ default parameters for mass conservation
+    """
+    _EQUATION_TYPE = 'REGU_Nmag' 
+    def __init__(self, param_dict={}):
+        # load necessary constants
+        Constants.__init__(self)
+        super().__init__(param_dict)
+
+    def set_default(self):
+        self.input = ['x', 'y']
+        self.output = ['n']
+        self.output_lb = [self.variable_lb[k] for k in self.output]
+        self.output_ub = [self.variable_ub[k] for k in self.output]
+        self.data_weights = [1.0]
+        self.residuals = ["f"+self._EQUATION_TYPE]
+        self.pde_weights = [1.0e-4]
+
+        # scalar variables: name:value
+        self.scalar_variables = {}
+class REGU_Nmag(EquationBase): #{{{
+    """ Regularisation for Lliboutry_Shear
+        applies regularisation on n
+        prefer small n
+    """
+    _EQUATION_TYPE = 'REGU_Nmag' 
+    def __init__(self, parameters=REGUNmagEquationParameter()):
+        super().__init__(parameters)
+
+    def _pde(self, nn_input_var, nn_output_var): #{{{
+        """ 
+        """
+        nid = self.local_output_var["n"]
+        
+        n1 = slice_column(nn_output_var, nid)
+        a = 3 
+        b = 18 
+        n = (b-a) * bkd.sigmoid(n1) + a
+        # n = bkd.sigmoid(n1) # p in [0,1]
+
+        f = n
 
         return [f] #}}}
     
