@@ -209,7 +209,7 @@ class Lliboutry_shear(EquationBase): #{{{
     #}}}
 #}}}
 
-# additional dissipative field, separate smb and dHdt
+# additional dissipative field to separate smb and dHdt
 class DdHEquationParameter(EquationParameter, Constants):
     """ default parameters for mass conservation
     """
@@ -247,26 +247,20 @@ class DdH(EquationBase): #{{{
 #}}}
 
 # add output variables for SSA
-class SSAweakEquationParamter(EquationParameter, Constants):
+class SSAsCEquationParamter(EquationParameter, Constants):
     """default parameters for SSA_exact
     """
-    _EQUATION_TYPE = 'SSA_weak'
+    _EQUATION_TYPE = 'SSA_sC'
     def __init__(self, param_dict={}):
         Constants.__init__(self)
         super().__init__(param_dict)
 
     def set_default(self):
         self.input = ['x', 'y']
-        # self.output = ['b','C'] #,'B']
-        self.output = ['s','C'] #,'B']
+        # self.output = ['b','C']
+        self.output = ['s','C']
         self.output_lb = [self.variable_lb[k] for k in self.output]
         self.output_ub = [self.variable_ub[k] for k in self.output]
-        # self.output_lb[2] = 7.
-        # self.output_ub[2] = 8.
-        # self.output_lb[2] = -10.
-        # self.output_ub[2] = 0.
-        # self.output_lb[2] = 0.
-        # self.output_ub[2] = 3.
         self.data_weights = [1.0e-3] + [1.0]*1
         self.residuals = []
         self.pde_weights = []
@@ -279,11 +273,59 @@ class SSAweakEquationParamter(EquationParameter, Constants):
                 'rho':917,
                 'g':9.81,
                 }     
-class SSA_weak(EquationBase): #{{{
+class SSA_sC(EquationBase): #{{{
     """ SSA with weak-form pde loss
     """
-    _EQUATION_TYPE = 'SSA_weak'
-    def __init__(self, parameters=SSAweakEquationParamter()):
+    _EQUATION_TYPE = 'SSA_sC'
+    def __init__(self, parameters=SSAsCEquationParamter()):
+        super().__init__(parameters)
+    def _pde(self, nn_input_var, nn_output_var): #{{{
+        """ no pde loss required
+        """
+        return [] 
+    
+    def _pde_jax(self, nn_input_var, nn_output_var): #{{{
+        """ 
+        """
+        pass
+#}}}
+
+class SSAsCBEquationParamter(EquationParameter, Constants):
+    """default parameters for SSA_exact
+    """
+    _EQUATION_TYPE = 'SSA_sCB'
+    def __init__(self, param_dict={}):
+        Constants.__init__(self)
+        super().__init__(param_dict)
+
+    def set_default(self):
+        self.input = ['x', 'y']
+        # self.output = ['b','C','B']
+        self.output = ['s','C','B']
+        self.output_lb = [self.variable_lb[k] for k in self.output]
+        self.output_ub = [self.variable_ub[k] for k in self.output]
+        # self.output_lb[2] = 7.
+        # self.output_ub[2] = 8.
+        # self.output_lb[2] = -10.
+        # self.output_ub[2] = 0.
+        self.output_lb[2] = 0.
+        self.output_ub[2] = 3.
+        self.data_weights = [1.0e-3] + [1.0]*1
+        self.residuals = []
+        self.pde_weights = []
+
+        # scalar variables: name:value
+        self.scalar_variables = {
+                'n': 3.0,               # exponent of Glen's flow law
+                'm': 3, # exponent of the Weertman friction law
+                'rho':917,
+                'g':9.81,
+                }     
+class SSA_sCB(EquationBase): #{{{
+    """ SSA with weak-form pde loss
+    """
+    _EQUATION_TYPE = 'SSA_sCB'
+    def __init__(self, parameters=SSAsCBEquationParamter()):
         super().__init__(parameters)
     def _pde(self, nn_input_var, nn_output_var): #{{{
         """ no pde loss required
