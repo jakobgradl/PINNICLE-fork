@@ -308,7 +308,7 @@ class PINN:
         for it, opt in zip(iterations, self.params.training.optimizers):
             self.compile(opt=opt, epochs=it)
             self._loss_history, self._train_state = self.model.train(iterations=it, 
-                                                                     display_every=10000, 
+                                                                     display_every=1000, 
                                                                      disregard_previous_best=True, 
                                                                      callbacks=callbacks)
         # prepare history
@@ -459,6 +459,12 @@ class PINN:
                                                                         #  batch_size=min_or_none(int(np.floor(self.params.training.mini_batch/20)), training_data.sol[d].shape[0]), 
                                                                          batch_size=200,
                                                                          shuffle=True))
+                    elif d == "SSAx_weak":
+                        training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.SSAx_weak,
+                                                                         batch_size=min_or_none(self.params.training.mini_batch, training_data.sol[d].shape[0]), shuffle=True))
+                    elif d == "SSAy_weak":
+                        training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.SSAy_weak,
+                                                                         batch_size=min_or_none(self.params.training.mini_batch, training_data.sol[d].shape[0]), shuffle=True))
                     elif d == "sx":
                         training_temp.append(dde.icbc.PointSetOperatorBC(training_data.X[d], training_data.sol[d], self.physics.user_defined_gradient('s','x'),
                                                                          batch_size=min_or_none(self.params.training.mini_batch, training_data.sol[d].shape[0]), shuffle=True))

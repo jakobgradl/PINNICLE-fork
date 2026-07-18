@@ -310,7 +310,7 @@ class SSAsCBEquationParamter(EquationParameter, Constants):
         # self.output_ub[2] = 0.
         self.output_lb[2] = 0.
         self.output_ub[2] = 3.
-        self.data_weights = [1.0e-3] + [1.0]*1
+        self.data_weights = [1.0e-3] + [1.0]*2
         self.residuals = []
         self.pde_weights = []
 
@@ -407,13 +407,13 @@ class REGU_P(EquationBase): #{{{
         u_bar = u_mf / H
         v_bar = v_mf / H
         
-        u_mag = (u_bar**2 + v_bar**2 + (1e-30)**2)**0.5
+        u_mag = (u_bar**2 + v_bar**2 + (1e-15)**2)**0.5
         
         p_x = jacobian(p, nn_input_var, i=0, j=xid)
         p_y = jacobian(p, nn_input_var, i=0, j=yid)
 
         # directional derivative of p in direction of velocity vector
-        p_dirdev = p_x*(u_mf/u_mag) + p_y*(v_mf/u_mag)
+        p_dirdev = p_x*(u_bar/u_mag) + p_y*(v_bar/u_mag)
 
         # return loss if p_dirdev is negative, zero loss otherwise
         f = bkd.relu(-1 * p_dirdev)
@@ -464,8 +464,8 @@ class REGU_N(EquationBase): #{{{
         super().__init__(parameters)
 
     def _pde(self, nn_input_var, nn_output_var): #{{{
-        """ pde loss is used as regularisation on p
-            (penalise when p decreases along flow)
+        """ pde loss is used as regularisation on n
+            (penalise when n decreases along flow)
             
         Args:
             nn_input_var: global input to the nn
@@ -498,15 +498,15 @@ class REGU_N(EquationBase): #{{{
         u_bar = u_mf / H
         v_bar = v_mf / H
         
-        u_mag = (u_bar**2 + v_bar**2)**0.5
+        u_mag = (u_bar**2 + v_bar**2 + (1e-15)**2)**0.5
         
         n_x = jacobian(n, nn_input_var, i=0, j=xid)
         n_y = jacobian(n, nn_input_var, i=0, j=yid)
 
-        # directional derivative of p in direction of velocity vector
-        n_dirdev = n_x*(u_mf/u_mag) + n_y*(v_mf/u_mag)
+        # directional derivative of n in direction of velocity vector
+        n_dirdev = n_x*(u_bar/u_mag) + n_y*(v_bar/u_mag)
 
-        # return loss if p_dirdev is negative, zero loss otherwise
+        # return loss if n_dirdev is negative, zero loss otherwise
         f = bkd.relu(-1 * n_dirdev)
 
         return [f] #}}}
@@ -1137,12 +1137,122 @@ class MC_EXACT:
         return sr**0.5
         
     def action_SSA(self, nn_input_var, nn_output_var, X):
-        return self.SSA_weak(nn_input_var, nn_output_var)
+        return self.SSA_action(nn_input_var, nn_output_var)
     
     def res_SSA(self, nn_input_var, nn_output_var, X):
         return self.SSA_strong(nn_input_var, nn_output_var)
 
-    def SSA_weak(self, nn_input_var, nn_output_var):
+    # def res_SSA_weak(self, nn_input_var, nn_output_var, X):
+    #     return self.SSA_weak(nn_input_var, nn_output_var)
+
+    def SSAx_weak(self, nn_input_var, nn_output_var, X):
+        """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
+            weak-form pde loss for SSA flow model
+        """
+        xid = self.input_var.index('x')
+        yid = self.input_var.index('y')
+
+        eps = 1.0e-30
+
+        n = self.equations[0].parameters.scalar_variables['n']
+        rho = self.equations[0].parameters.scalar_variables['rho']
+        g = self.equations[0].parameters.scalar_variables['g']
+        
+        H = self.get_H(nn_input_var,nn_output_var)
+        B = self.get_B(nn_input_var,nn_output_var)
+        C = self.get_C(nn_input_var,nn_output_var)
+        u = self.u_MC(nn_input_var,nn_output_var,None)
+        v = self.v_MC(nn_input_var,nn_output_var,None)
+
+        # test function: normalised gaussian kernel
+        x = slice_column(nn_input_var, xid)
+        y = slice_column(nn_input_var, yid)
+
+        tf1 = bkd.sin(x) + bkd.cos(y)
+        tf2 = bkd.sin(y) + bkd.cos(x)
+
+        # spatial derivatives
+        u_x = jacobian(u, nn_input_var, i=0, j=xid)
+        v_x = jacobian(v, nn_input_var, i=0, j=xid)
+        u_y = jacobian(u, nn_input_var, i=0, j=yid)
+        v_y = jacobian(v, nn_input_var, i=0, j=yid)
+
+        sx = self.s_x(nn_input_var,nn_output_var)
+        sy = self.s_y(nn_input_var,nn_output_var)
+
+        tf1_x = jacobian(tf1, nn_input_var, i=0, j=xid)
+        tf1_y = jacobian(tf1, nn_input_var, i=0, j=yid)
+        tf2_x = jacobian(tf2, nn_input_var, i=0, j=xid)
+        tf2_y = jacobian(tf2, nn_input_var, i=0, j=yid)
+
+        eta = 0.5*B *(u_x**2.0 + v_y**2.0 + 0.25*(u_y+v_x)**2.0 + u_x*v_y+eps)**(0.5*(1.0-n)/n)
+        etaH = eta * H
+
+        # compute the basal stress
+        u_norm = (u**2+v**2+eps**2)**0.5
+        alpha = C**2 * (u_norm)**(1.0/n)
+
+        VISC1 = 2*etaH * ( (2*u_x+v_y)*tf1_x + (u_x+v_y)*tf2_y +0.5*(u_y+v_x)*(tf1_y+tf2_x) )
+        FRIC1 = (tf1*alpha*u/(u_norm) + tf2*alpha*v/(u_norm))
+        GRAV1 = rho*g*H * (tf1*sx + tf2*sy)
+
+        return VISC1 + FRIC1 + GRAV1
+
+    def SSAy_weak(self, nn_input_var, nn_output_var, X):
+        """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
+            weak-form pde loss for SSA flow model
+        """
+        xid = self.input_var.index('x')
+        yid = self.input_var.index('y')
+
+        eps = 1.0e-30
+
+        n = self.equations[0].parameters.scalar_variables['n']
+        rho = self.equations[0].parameters.scalar_variables['rho']
+        g = self.equations[0].parameters.scalar_variables['g']
+
+        H = self.get_H(nn_input_var,nn_output_var)
+        B = self.get_B(nn_input_var,nn_output_var)
+        C = self.get_C(nn_input_var,nn_output_var)
+        u = self.u_MC(nn_input_var,nn_output_var,None)
+        v = self.v_MC(nn_input_var,nn_output_var,None)
+
+        # test function: normalised gaussian kernel
+        x = slice_column(nn_input_var, xid)
+        y = slice_column(nn_input_var, yid)
+
+        tf1 = bkd.sin(x) + bkd.cos(y)
+        tf2 = bkd.sin(y) + bkd.cos(x)
+
+        # spatial derivatives
+        u_x = jacobian(u, nn_input_var, i=0, j=xid)
+        v_x = jacobian(v, nn_input_var, i=0, j=xid)
+        u_y = jacobian(u, nn_input_var, i=0, j=yid)
+        v_y = jacobian(v, nn_input_var, i=0, j=yid)
+
+        sx = self.s_x(nn_input_var,nn_output_var)
+        sy = self.s_y(nn_input_var,nn_output_var)
+
+        tf1_x = jacobian(tf1, nn_input_var, i=0, j=xid)
+        tf1_y = jacobian(tf1, nn_input_var, i=0, j=yid)
+        tf2_x = jacobian(tf2, nn_input_var, i=0, j=xid)
+        tf2_y = jacobian(tf2, nn_input_var, i=0, j=yid)
+
+        eta = 0.5*B *(u_x**2.0 + v_y**2.0 + 0.25*(u_y+v_x)**2.0 + u_x*v_y+eps)**(0.5*(1.0-n)/n)
+        etaH = eta * H
+
+        # compute the basal stress
+        u_norm = (u**2+v**2+eps**2)**0.5
+        alpha = C**2 * (u_norm)**(1.0/n)
+
+        VISC2 = 2*etaH * ( (2*u_x+v_y)*tf2_x + (u_x+v_y)*tf1_y +0.5*(u_y+v_x)*(tf2_y+tf1_x) )
+        FRIC2 = (tf2*alpha*u/(u_norm) + tf1*alpha*v/(u_norm))
+        GRAV2 = rho*g*H * (tf2*sx + tf1*sy)
+
+        return VISC2 + FRIC2 + GRAV2
+
+
+    def SSA_action(self, nn_input_var, nn_output_var):
         """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
             weak-form pde loss for SSA flow model
         """
