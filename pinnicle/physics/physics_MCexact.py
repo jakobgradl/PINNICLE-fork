@@ -1169,7 +1169,7 @@ class MC_EXACT:
         y = slice_column(nn_input_var, yid)
 
         tf1 = bkd.sin(x) + bkd.cos(y)
-        tf2 = bkd.sin(y) + bkd.cos(x)
+        # tf2 = bkd.sin(y) + bkd.cos(x)
 
         # spatial derivatives
         u_x = jacobian(u, nn_input_var, i=0, j=xid)
@@ -1178,12 +1178,12 @@ class MC_EXACT:
         v_y = jacobian(v, nn_input_var, i=0, j=yid)
 
         sx = self.s_x(nn_input_var,nn_output_var)
-        sy = self.s_y(nn_input_var,nn_output_var)
+        # sy = self.s_y(nn_input_var,nn_output_var)
 
         tf1_x = jacobian(tf1, nn_input_var, i=0, j=xid)
         tf1_y = jacobian(tf1, nn_input_var, i=0, j=yid)
-        tf2_x = jacobian(tf2, nn_input_var, i=0, j=xid)
-        tf2_y = jacobian(tf2, nn_input_var, i=0, j=yid)
+        # tf2_x = jacobian(tf2, nn_input_var, i=0, j=xid)
+        # tf2_y = jacobian(tf2, nn_input_var, i=0, j=yid)
 
         eta = 0.5*B *(u_x**2.0 + v_y**2.0 + 0.25*(u_y+v_x)**2.0 + u_x*v_y+eps)**(0.5*(1.0-n)/n)
         etaH = eta * H
@@ -1192,9 +1192,13 @@ class MC_EXACT:
         u_norm = (u**2+v**2+eps**2)**0.5
         alpha = C**2 * (u_norm)**(1.0/n)
 
-        VISC1 = 2*etaH * ( (2*u_x+v_y)*tf1_x + (u_x+v_y)*tf2_y +0.5*(u_y+v_x)*(tf1_y+tf2_x) )
-        FRIC1 = (tf1*alpha*u/(u_norm) + tf2*alpha*v/(u_norm))
-        GRAV1 = rho*g*H * (tf1*sx + tf2*sy)
+        # VISC1 = 2*etaH * ( (2*u_x+v_y)*tf1_x + (u_x+v_y)*tf2_y +0.5*(u_y+v_x)*(tf1_y+tf2_x) )
+        # FRIC1 = (tf1*alpha*u/(u_norm) + tf2*alpha*v/(u_norm))
+        # GRAV1 = rho*g*H * (tf1*sx + tf2*sy)
+
+        VISC1 = 2*etaH*(2*u_x+v_y)*tf1_x + etaH*(u_y+v_x)*tf1_y
+        FRIC1 = tf1 * alpha*u/(u_norm)
+        GRAV1 = rho*g*H*sx*tf1
 
         return VISC1 + FRIC1 + GRAV1
 
@@ -1221,7 +1225,7 @@ class MC_EXACT:
         x = slice_column(nn_input_var, xid)
         y = slice_column(nn_input_var, yid)
 
-        tf1 = bkd.sin(x) + bkd.cos(y)
+        # tf1 = bkd.sin(x) + bkd.cos(y)
         tf2 = bkd.sin(y) + bkd.cos(x)
 
         # spatial derivatives
@@ -1230,11 +1234,11 @@ class MC_EXACT:
         u_y = jacobian(u, nn_input_var, i=0, j=yid)
         v_y = jacobian(v, nn_input_var, i=0, j=yid)
 
-        sx = self.s_x(nn_input_var,nn_output_var)
+        # sx = self.s_x(nn_input_var,nn_output_var)
         sy = self.s_y(nn_input_var,nn_output_var)
 
-        tf1_x = jacobian(tf1, nn_input_var, i=0, j=xid)
-        tf1_y = jacobian(tf1, nn_input_var, i=0, j=yid)
+        # tf1_x = jacobian(tf1, nn_input_var, i=0, j=xid)
+        # tf1_y = jacobian(tf1, nn_input_var, i=0, j=yid)
         tf2_x = jacobian(tf2, nn_input_var, i=0, j=xid)
         tf2_y = jacobian(tf2, nn_input_var, i=0, j=yid)
 
@@ -1245,9 +1249,14 @@ class MC_EXACT:
         u_norm = (u**2+v**2+eps**2)**0.5
         alpha = C**2 * (u_norm)**(1.0/n)
 
-        VISC2 = 2*etaH * ( (2*u_x+v_y)*tf2_x + (u_x+v_y)*tf1_y +0.5*(u_y+v_x)*(tf2_y+tf1_x) )
-        FRIC2 = (tf2*alpha*u/(u_norm) + tf1*alpha*v/(u_norm))
-        GRAV2 = rho*g*H * (tf2*sx + tf1*sy)
+        # VISC2 = 2*etaH * ( (2*u_x+v_y)*tf2_x + (u_x+v_y)*tf1_y +0.5*(u_y+v_x)*(tf2_y+tf1_x) )
+        # FRIC2 = (tf2*alpha*u/(u_norm) + tf1*alpha*v/(u_norm))
+        # GRAV2 = rho*g*H * (tf2*sx + tf1*sy)
+
+
+        VISC2 = 2*etaH*(u_x+2*v_y)*tf2_y + etaH*(u_y+v_x)*tf2_x
+        FRIC2 = tf2 * alpha*v/(u_norm)
+        GRAV2 = rho*g*H*sy*tf2
 
         return VISC2 + FRIC2 + GRAV2
 
