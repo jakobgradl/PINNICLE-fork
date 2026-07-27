@@ -1168,8 +1168,21 @@ class MC_EXACT:
         x = slice_column(nn_input_var, xid)
         y = slice_column(nn_input_var, yid)
 
-        tf1 = bkd.sin(x) + bkd.cos(y)
+        # tf1 = bkd.sin(x) + bkd.cos(y)
         # tf2 = bkd.sin(y) + bkd.cos(x)
+
+        a = 1
+        b = 2
+        c = 8
+        d = 32
+
+        tf1 = [None]*4
+
+        tf1[0] = bkd.sin((1/a)*(x-a+1)) + bkd.cos((1/(a*2))*(y-(a*2)+1))
+        tf1[1] = bkd.sin((1/b)*(x-b+1)) + bkd.cos((1/(b*2))*(y-(b*2)+1))
+        tf1[2] = bkd.sin((1/c)*(x-c+1)) + bkd.cos((1/(c*2))*(y-(c*2)+1))
+        tf1[3] = bkd.sin((1/d)*(x-d+1)) + bkd.cos((1/(d*2))*(y-(d*2)+1))
+
 
         # spatial derivatives
         u_x = jacobian(u, nn_input_var, i=0, j=xid)
@@ -1177,11 +1190,15 @@ class MC_EXACT:
         u_y = jacobian(u, nn_input_var, i=0, j=yid)
         v_y = jacobian(v, nn_input_var, i=0, j=yid)
 
-        sx = self.s_x(nn_input_var,nn_output_var)
+        s_x = self.s_x(nn_input_var,nn_output_var)
         # sy = self.s_y(nn_input_var,nn_output_var)
 
-        tf1_x = jacobian(tf1, nn_input_var, i=0, j=xid)
-        tf1_y = jacobian(tf1, nn_input_var, i=0, j=yid)
+        tf1_x = [bkd.zeros_like(H)]*4
+        tf1_y = [bkd.zeros_like(H)]*4
+
+        for i in range(4):
+            tf1_x[i] = jacobian(tf1[i], nn_input_var, i=0, j=xid)
+            tf1_y[i] = jacobian(tf1[i], nn_input_var, i=0, j=yid)
         # tf2_x = jacobian(tf2, nn_input_var, i=0, j=xid)
         # tf2_y = jacobian(tf2, nn_input_var, i=0, j=yid)
 
@@ -1192,15 +1209,20 @@ class MC_EXACT:
         u_norm = (u**2+v**2+eps**2)**0.5
         alpha = C**2 * (u_norm)**(1.0/n)
 
+        F1 = 0
+
         # VISC1 = 2*etaH * ( (2*u_x+v_y)*tf1_x + (u_x+v_y)*tf2_y +0.5*(u_y+v_x)*(tf1_y+tf2_x) )
         # FRIC1 = (tf1*alpha*u/(u_norm) + tf2*alpha*v/(u_norm))
         # GRAV1 = rho*g*H * (tf1*sx + tf2*sy)
 
-        VISC1 = 2*etaH*(2*u_x+v_y)*tf1_x + etaH*(u_y+v_x)*tf1_y
-        FRIC1 = tf1 * alpha*u/(u_norm)
-        GRAV1 = rho*g*H*sx*tf1
+        for i in range(4):
+            VISC1 = 2*etaH*(2*u_x+v_y)*tf1_x[i] + etaH*(u_y+v_x)*tf1_y[i]
+            FRIC1 = tf1[i] * alpha*u/(u_norm)
+            GRAV1 = rho*g*H*s_x*tf1[i]
 
-        return VISC1 + FRIC1 + GRAV1
+            F1 += bkd.reduce_mean(VISC1 + FRIC1 + GRAV1)
+
+        return F1 * (bkd.zeros_like(H)+1.)
 
     def SSAy_weak(self, nn_input_var, nn_output_var, X):
         """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
@@ -1226,7 +1248,19 @@ class MC_EXACT:
         y = slice_column(nn_input_var, yid)
 
         # tf1 = bkd.sin(x) + bkd.cos(y)
-        tf2 = bkd.sin(y) + bkd.cos(x)
+        # tf2 = bkd.sin(y) + bkd.cos(x)
+
+        a = 1
+        b = 2
+        c = 8
+        d = 32
+
+        tf2 = [None]*4
+
+        tf2[0] = bkd.sin((1/a)*(y-a+1)) + bkd.cos((1/(a*2))*(x-(a*2)+1))
+        tf2[1] = bkd.sin((1/b)*(y-b+1)) + bkd.cos((1/(b*2))*(x-(b*2)+1))
+        tf2[2] = bkd.sin((1/c)*(y-c+1)) + bkd.cos((1/(c*2))*(x-(c*2)+1))
+        tf2[3] = bkd.sin((1/d)*(y-d+1)) + bkd.cos((1/(d*2))*(x-(d*2)+1))
 
         # spatial derivatives
         u_x = jacobian(u, nn_input_var, i=0, j=xid)
@@ -1235,12 +1269,17 @@ class MC_EXACT:
         v_y = jacobian(v, nn_input_var, i=0, j=yid)
 
         # sx = self.s_x(nn_input_var,nn_output_var)
-        sy = self.s_y(nn_input_var,nn_output_var)
+        s_y = self.s_y(nn_input_var,nn_output_var)
 
         # tf1_x = jacobian(tf1, nn_input_var, i=0, j=xid)
         # tf1_y = jacobian(tf1, nn_input_var, i=0, j=yid)
-        tf2_x = jacobian(tf2, nn_input_var, i=0, j=xid)
-        tf2_y = jacobian(tf2, nn_input_var, i=0, j=yid)
+
+        tf2_x = [bkd.zeros_like(H)]*4
+        tf2_y = [bkd.zeros_like(H)]*4
+
+        for i in range(4):
+            tf2_x[i] = jacobian(tf2[i], nn_input_var, i=0, j=xid)
+            tf2_y[i] = jacobian(tf2[i], nn_input_var, i=0, j=yid)
 
         eta = 0.5*B *(u_x**2.0 + v_y**2.0 + 0.25*(u_y+v_x)**2.0 + u_x*v_y+eps)**(0.5*(1.0-n)/n)
         etaH = eta * H
@@ -1249,16 +1288,20 @@ class MC_EXACT:
         u_norm = (u**2+v**2+eps**2)**0.5
         alpha = C**2 * (u_norm)**(1.0/n)
 
+        F2 = 0
+
         # VISC2 = 2*etaH * ( (2*u_x+v_y)*tf2_x + (u_x+v_y)*tf1_y +0.5*(u_y+v_x)*(tf2_y+tf1_x) )
         # FRIC2 = (tf2*alpha*u/(u_norm) + tf1*alpha*v/(u_norm))
         # GRAV2 = rho*g*H * (tf2*sx + tf1*sy)
 
+        for i in range(4):
+            VISC2 = 2*etaH*(u_x+2*v_y)*tf2_y[i] + etaH*(u_y+v_x)*tf2_x[i]
+            FRIC2 = tf2[i] * alpha*v/(u_norm)
+            GRAV2 = rho*g*H*s_y*tf2[i]
+                    
+            F2 += bkd.reduce_mean(VISC2 + FRIC2 + GRAV2)
 
-        VISC2 = 2*etaH*(u_x+2*v_y)*tf2_y + etaH*(u_y+v_x)*tf2_x
-        FRIC2 = tf2 * alpha*v/(u_norm)
-        GRAV2 = rho*g*H*sy*tf2
-
-        return VISC2 + FRIC2 + GRAV2
+        return F2 * (bkd.zeros_like(H)+1.)
 
 
     def SSA_action(self, nn_input_var, nn_output_var):
