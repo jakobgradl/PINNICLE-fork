@@ -308,8 +308,10 @@ class SSAsCBEquationParamter(EquationParameter, Constants):
         # self.output_ub[2] = 8.
         # self.output_lb[2] = -10.
         # self.output_ub[2] = 0.
-        self.output_lb[2] = 0.
-        self.output_ub[2] = 3.
+        # self.output_lb[2] = 0.
+        # self.output_ub[2] = 3.
+        self.output_lb[2] = 1e3 # 10.
+        self.output_ub[2] = 1e4 # 100.
         self.data_weights = [1.0e-3] + [1.0]*2
         self.residuals = []
         self.pde_weights = []
@@ -320,6 +322,7 @@ class SSAsCBEquationParamter(EquationParameter, Constants):
                 'm': 3, # exponent of the Weertman friction law
                 'rho':917,
                 'g':9.81,
+                'Bmin':7.469e7, # 0 degree C, cuffey
                 }     
 class SSA_sCB(EquationBase): #{{{
     """ SSA with weak-form pde loss
@@ -338,6 +341,56 @@ class SSA_sCB(EquationBase): #{{{
         pass
 #}}}
 
+class SSAsBEquationParamter(EquationParameter, Constants):
+    """default parameters for SSA_exact
+    """
+    _EQUATION_TYPE = 'SSA_sB'
+    def __init__(self, param_dict={}):
+        Constants.__init__(self)
+        super().__init__(param_dict)
+
+    def set_default(self):
+        self.input = ['x', 'y']
+        # self.output = ['b','C','B']
+        self.output = ['s','B']
+        self.output_lb = [self.variable_lb[k] for k in self.output]
+        self.output_ub = [self.variable_ub[k] for k in self.output]
+        # self.output_lb[2] = 7.
+        # self.output_ub[2] = 8.
+        # self.output_lb[2] = -10.
+        # self.output_ub[2] = 0.
+        # self.output_lb[2] = 0.
+        # self.output_ub[2] = 3.
+        self.output_lb[1] = 1e3 # 10.
+        self.output_ub[1] = 1e4 # 100.
+        self.data_weights = [1.0e-3] + [1.0]
+        self.residuals = []
+        self.pde_weights = []
+
+        # scalar variables: name:value
+        self.scalar_variables = {
+                'n': 3.0,               # exponent of Glen's flow law
+                'm': 3, # exponent of the Weertman friction law
+                'rho':917,
+                'g':9.81,
+                'Bmin':7.469e7, # 0 degree C, cuffey
+                }     
+class SSA_sB(EquationBase): #{{{
+    """ SSA with weak-form pde loss
+    """
+    _EQUATION_TYPE = 'SSA_sB'
+    def __init__(self, parameters=SSAsBEquationParamter()):
+        super().__init__(parameters)
+    def _pde(self, nn_input_var, nn_output_var): #{{{
+        """ no pde loss required
+        """
+        return [] 
+    
+    def _pde_jax(self, nn_input_var, nn_output_var): #{{{
+        """ 
+        """
+        pass
+#}}}
 
 ####################################
 ### regularisation functions
@@ -1027,9 +1080,14 @@ class MC_EXACT:
         if 'B' in self.output_var:
             Bid = self.output_var.index('B')
             B_exp = slice_column(nn_output_var, Bid)
+            # Bminid = self.equations.index['SSA_sCB']
+            # Bmin = self.equations[Bminid].parameters.scalar_variables['Bmin']
+            Bmin = 1e7
             # B = 7.0 * 10.**B_exp
             # B = 7.469e7 * 10.**bkd.exp(B_exp)
-            B = 7.469e7 + 7.469e7 * B_exp**2
+            # Bmin = 7.469e7
+            # B = Bmin + Bmin * B_exp**2
+            B = Bmin + B_exp**2
         else:
             B = self.equations[0].parameters.scalar_variables['B']
         return B
@@ -1313,16 +1371,17 @@ class MC_EXACT:
         g = self.equations[0].parameters.scalar_variables['g']
         m = self.equations[0].parameters.scalar_variables['m']
 
-        H = self.get_H(nn_input_var,nn_output_var)
+        H = self.get_H(nn_input_var,nn_output_var).detach()
         B = self.get_B(nn_input_var,nn_output_var)
-        C = self.get_C(nn_input_var,nn_output_var)
-        u = self.u_MC(nn_input_var,nn_output_var,None)
-        v = self.v_MC(nn_input_var,nn_output_var,None)
+        # C = self.get_C(nn_input_var,nn_output_var)
+        C = self.SSA_exact(nn_input_var,nn_output_var)
+        u = self.u_MC(nn_input_var,nn_output_var,None).detach()
+        v = self.v_MC(nn_input_var,nn_output_var,None).detach()
 
-        sx = self.s_x(nn_input_var,nn_output_var)
-        sy = self.s_y(nn_input_var,nn_output_var)
-        u_mag = self.vel_mag_MC(nn_input_var,nn_output_var,None)
-        sr_eff = self.effective_strain_rate_SSA(nn_input_var, nn_output_var)
+        sx = self.s_x(nn_input_var,nn_output_var).detach()
+        sy = self.s_y(nn_input_var,nn_output_var).detach()
+        u_mag = self.vel_mag_MC(nn_input_var,nn_output_var,None).detach()
+        sr_eff = self.effective_strain_rate_SSA(nn_input_var, nn_output_var).detach()
 
         VISC = 2*n/(n+1) * H * B * sr_eff**((1/n)+1)
         GRAV = rho * g * H * (sx*u + sy*v)
@@ -1522,7 +1581,8 @@ class MC_EXACT:
 
         sr_eff = self.effective_strain_rate_SSA(nn_input_var, nn_output_var)
 
-        eta = 0.5*B * sr_eff**((1/n)-1)
+        # eta = 0.5*B * sr_eff**((1/n)-1)
+        eta = 0.5 * sr_eff**((1/n)-1)
         # stress tensor
         etaH = eta * H
         B11 = etaH*(4*u_x + 2*v_y)
@@ -1530,17 +1590,23 @@ class MC_EXACT:
         B12 = etaH*(  u_y +   v_x)
 
         # Getting the other derivatives
-        sigma11 = jacobian(B11, nn_input_var, i=0, j=xid)
-        sigma12 = jacobian(B12, nn_input_var, i=0, j=yid)
+        # sigma11 = jacobian(B11, nn_input_var, i=0, j=xid)
+        # sigma12 = jacobian(B12, nn_input_var, i=0, j=yid)
 
-        sigma21 = jacobian(B12, nn_input_var, i=0, j=xid)
-        sigma22 = jacobian(B22, nn_input_var, i=0, j=yid)
+        # sigma21 = jacobian(B12, nn_input_var, i=0, j=xid)
+        # sigma22 = jacobian(B22, nn_input_var, i=0, j=yid)
 
-        tau_bx = sigma11 + sigma12 - rho*g*H*sx 
-        tau_by = sigma21 + sigma22 - rho*g*H*sy 
+        sigma11 = B * jacobian(B11, nn_input_var, i=0, j=xid).detach() + jacobian(B, nn_input_var, i=0, j=xid) * B11.detach()
+        sigma12 = B * jacobian(B12, nn_input_var, i=0, j=xid).detach() + jacobian(B, nn_input_var, i=0, j=yid) * B12.detach()
+
+        sigma21 = B * jacobian(B12, nn_input_var, i=0, j=xid).detach() + jacobian(B, nn_input_var, i=0, j=xid) * B12.detach()
+        sigma22 = B * jacobian(B22, nn_input_var, i=0, j=xid).detach() + jacobian(B, nn_input_var, i=0, j=yid) * B22.detach()
+        
+        tau_bx = sigma11 + sigma12 - rho*g*H*sx.detach() 
+        tau_by = sigma21 + sigma22 - rho*g*H*sy.detach() 
         tau_b = (tau_bx**2 + tau_by**2)**0.5
 
-        C = tau_b * (u_mag)**(-1.0/m)
+        C = tau_b * (u_mag.detach())**(-1.0/m)
 
         return C
 
