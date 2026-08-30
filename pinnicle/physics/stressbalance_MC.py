@@ -33,6 +33,7 @@ class SSAweakEquationParamter(EquationParameter, Constants):
                 'm': 3, # exponent of the Weertman friction law
                 'rho':917,
                 'g':9.81,
+                'Bmin':7.469e7, # 0 degree C, cuffey
                 }
 class SSA_weak(EquationBase): #{{{
     """ variational (weak-form) SSA on 2D problem with uniform B
@@ -170,8 +171,10 @@ class SSAvarBweakEquationParamter(EquationParameter, Constants):
         self.output = ['u', 'v', 's', 'H', 'C', 'B']
         self.output_lb = [self.variable_lb[k] for k in self.output]
         self.output_ub = [self.variable_ub[k] for k in self.output]
-        self.output_lb[5] = 0.
-        self.output_ub[5] = 3.
+        # self.output_lb[5] = 0.
+        # self.output_ub[5] = 3.
+        self.output_lb[5] = 10.
+        self.output_ub[5] = 100.
         self.data_weights = [1.0e-8*self.yts**2.0, 1.0e-8*self.yts**2.0, 1.0e-6, 1.0e-6, 1.0e-8, 1.0e-16]
         self.residuals = ["f"+self._EQUATION_TYPE+"1", "f"+self._EQUATION_TYPE+"2"]
         self.pde_weights = [1e0,1e0]
@@ -244,7 +247,8 @@ class SSAvarB_weak(EquationBase): #{{{
         C = slice_column(nn_output_var, Cid)
         Bfac = slice_column(nn_output_var, Bid)
 
-        B = 7.469e7 + 7.469e7 * Bfac**2
+        # B = 7.469e7 + 7.469e7 * Bfac**2
+        B = self.Bmin + Bfac**2
 
         tf1_x = [bkd.zeros_like(H)]*4
         tf1_y = [bkd.zeros_like(H)]*4
