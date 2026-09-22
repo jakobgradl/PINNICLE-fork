@@ -303,6 +303,8 @@ def test_operator():
     assert phy.operator('dummy') == None
     assert phy.operator('CalvingFront') == None
     assert phy.operator('CALVINGFRONT') == None
+    assert phy.operator('MC_exact') == None
+    assert phy.operator('MC_exact_Helmholtz') == None
 
 def test_Physics_dummy():
     dummy = {}
@@ -333,4 +335,30 @@ def test_Physics_CalvingFrontBC():
     assert len(phy.output_lb) == 7
     assert len(phy.output_ub) == 7
     assert len(phy.data_weights) == 7
+    assert len(phy.pde_weights) == 0
+
+def test_Physics_MCexact():
+    hp = {}
+    hp["equations"] = {"MC_exact":{}}
+    phy = Physics(PhysicsParameter(hp))
+
+    assert phy.input_var == ['x', 'y']
+    assert phy.output_var ==  ['Q_x', 'Q_y', 'Hexp']
+    assert phy.residuals == []
+    assert len(phy.output_lb) == 3
+    assert len(phy.output_ub) == 3
+    assert len(phy.data_weights) == 3
+    assert len(phy.pde_weights) == 0
+
+def test_Physics_MCexactHelmholtz():
+    hp = {}
+    hp["equations"] = {"MC_exact_Helmholtz":{}}
+    phy = Physics(PhysicsParameter(hp))
+
+    assert phy.input_var == ['x', 'y']
+    assert phy.output_var ==  ['D_smb', 'R', 'Hexp']
+    assert phy.residuals == []
+    assert len(phy.output_lb) == 3
+    assert len(phy.output_ub) == 3
+    assert len(phy.data_weights) == 3
     assert len(phy.pde_weights) == 0

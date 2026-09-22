@@ -258,3 +258,56 @@ def test_calving_front():
 
     cf = experiment.model.predict(experiment.model_data.X['u'], operator=op)
     assert cf.shape == (10, 1)
+
+def test_MCexact_pde_function():
+    hp_local = dict(hp)
+    hp_local["equations"] = {"MC_exact":{}}
+    experiment = pinn.PINN(params=hp_local)
+    experiment.compile()
+    y = experiment.model.predict(experiment.model_data.X['u'], operator=experiment.physics.operator("MC_exact"))
+
+    assert len(y) == 0
+
+def test_MCexactHelmholtz_pde_function():
+    hp_local = dict(hp)
+    hp_local["equations"] = {"MC_exact_Helmholtz":{}}
+    experiment = pinn.PINN(params=hp_local)
+    experiment.compile()
+    y = experiment.model.predict(experiment.model_data.X['u'], operator=experiment.physics.operator("MC_exact_Helmholtz"))
+
+    assert len(y) == 0
+
+def test_MCexact_data_functions():
+    hp_local = dict(hp)
+    hp_local["equations"] = {"MC_exact_Helmholtz": {}}
+    experiment = pinn.PINN(params=hp_local)
+    experiment.compile()
+    def op_01(i,o):
+        return experiment.physics.vel_mag_MC(i,o,None)
+    surfx = experiment.model.predict(experiment.model_data.X['u'], operator=op_01)
+    assert surfx.shape == (10,1)
+
+    def op_02(i,o):
+        return experiment.physics.u_MC(i,o,None)
+    surfx = experiment.model.predict(experiment.model_data.X['u'], operator=op_02)
+    assert surfx.shape == (10,1)
+
+    def op_03(i,o):
+        return experiment.physics.v_MC(i,o,None)
+    surfx = experiment.model.predict(experiment.model_data.X['u'], operator=op_03)
+    assert surfx.shape == (10,1)
+
+    def op_04(i,o):
+        return experiment.physics.smb_MC(i,o,None)
+    surfx = experiment.model.predict(experiment.model_data.X['u'], operator=op_04)
+    assert surfx.shape == (10,1)
+
+    def op_05(i,o):
+        return experiment.physics.dH_MC(i,o,None)
+    surfx = experiment.model.predict(experiment.model_data.X['u'], operator=op_05)
+    assert surfx.shape == (10,1)
+
+    def op_06(i,o):
+        return experiment.physics.mb_MC(i,o,None)
+    surfx = experiment.model.predict(experiment.model_data.X['u'], operator=op_06)
+    assert surfx.shape == (10,1)
