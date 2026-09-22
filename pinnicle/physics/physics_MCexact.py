@@ -1417,7 +1417,7 @@ class MC_EXACT:
 
         sr_eff = self.effective_strain_rate_SSA(nn_input_var, nn_output_var)
 
-        eta = 0.5*B * sr_eff**((1/n)-1)
+        eta = 0.5 * sr_eff**((1/n)-1)
         # stress tensor
         etaH = eta * H
         B11 = etaH*(4*u_x + 2*v_y)
@@ -1425,18 +1425,18 @@ class MC_EXACT:
         B12 = etaH*(  u_y +   v_x)
 
         # Getting the other derivatives
-        sigma11 = jacobian(B11, nn_input_var, i=0, j=xid)
-        sigma12 = jacobian(B12, nn_input_var, i=0, j=yid)
+        sigma11 = B * jacobian(B11, nn_input_var, i=0, j=xid).detach() + jacobian(B, nn_input_var, i=0, j=xid) * B11.detach()
+        sigma12 = B * jacobian(B12, nn_input_var, i=0, j=xid).detach() + jacobian(B, nn_input_var, i=0, j=yid) * B12.detach()
 
-        sigma21 = jacobian(B12, nn_input_var, i=0, j=xid)
-        sigma22 = jacobian(B22, nn_input_var, i=0, j=yid)
-
+        sigma21 = B * jacobian(B12, nn_input_var, i=0, j=xid).detach() + jacobian(B, nn_input_var, i=0, j=xid) * B12.detach()
+        sigma22 = B * jacobian(B22, nn_input_var, i=0, j=xid).detach() + jacobian(B, nn_input_var, i=0, j=yid) * B22.detach()
+                
 
         # compute the basal stress
         alpha = C * (u_mag)**(1.0/m)
 
-        f1 = sigma11 + sigma12 - alpha*u/(u_mag) - rho*g*H*sx
-        f2 = sigma21 + sigma22 - alpha*v/(u_mag) - rho*g*H*sy
+        f1 = sigma11 + sigma12 - alpha.detach()*u.detach()/(u_mag.detach()) - rho*g*H.detach()*sx.detach()
+        f2 = sigma21 + sigma22 - alpha.detach()*v.detach()/(u_mag.detach()) - rho*g*H.detach()*sy.detach()
 
         return (f1**2 + f2**2)**0.5
         # return [f1,f2]
@@ -1461,7 +1461,6 @@ class MC_EXACT:
         u_mag = self.vel_mag_MC(nn_input_var,nn_output_var,None)
 
         sx = self.s_x(nn_input_var,nn_output_var)
-        # sy = self.s_y(nn_input_var,nn_output_var)
 
         u_x = jacobian(u, nn_input_var, i=0, j=xid)
         v_x = jacobian(v, nn_input_var, i=0, j=xid)
@@ -1470,31 +1469,21 @@ class MC_EXACT:
 
         sr_eff = self.effective_strain_rate_SSA(nn_input_var, nn_output_var)
 
-        eta = 0.5*B * sr_eff**((1/n)-1)
+        eta = 0.5 * sr_eff**((1/n)-1)
 
-        # eta = 0.5*B *(u_x**2.0 + v_y**2.0 + 0.25*(u_y+v_x)**2.0 + u_x*v_y + eps)**(0.5*(1.0-n)/n)
-        
         # stress tensor
         etaH = eta * H
         B11 = etaH*(4*u_x + 2*v_y)
-        # B22 = etaH*(4*v_y + 2*u_x)
         B12 = etaH*(  u_y +   v_x)
 
         # Getting the other derivatives
-        sigma11 = jacobian(B11, nn_input_var, i=0, j=xid)
-        sigma12 = jacobian(B12, nn_input_var, i=0, j=yid)
-
-        # sigma21 = jacobian(B12, nn_input_var, i=0, j=xid)
-        # sigma22 = jacobian(B22, nn_input_var, i=0, j=yid)
-
+        sigma11 = B * jacobian(B11, nn_input_var, i=0, j=xid).detach() + jacobian(B, nn_input_var, i=0, j=xid) * B11.detach()
+        sigma12 = B * jacobian(B12, nn_input_var, i=0, j=xid).detach() + jacobian(B, nn_input_var, i=0, j=yid) * B12.detach()
 
         # compute the basal stress
         alpha = C * (u_mag)**(1.0/m)
 
-        f1 = sigma11 + sigma12 - alpha*u/(u_mag) - rho*g*H*sx
-        # f2 = sigma21 + sigma22 - alpha*v/(u_mag) - rho*g*H*sy
-
-        # return (f1**2 + f2**2)**0.5
+        f1 = sigma11 + sigma12 - alpha.detach()*u.detach()/(u_mag.detach()) - rho*g*H.detach()*sx.detach()
         return f1
 
     def SSAy_MC(self, nn_input_var, nn_output_var,X):
@@ -1516,7 +1505,6 @@ class MC_EXACT:
         v = self.v_MC(nn_input_var,nn_output_var,None)
         u_mag = self.vel_mag_MC(nn_input_var,nn_output_var,None)
 
-        # sx = self.s_x(nn_input_var,nn_output_var)
         sy = self.s_y(nn_input_var,nn_output_var)
 
         u_x = jacobian(u, nn_input_var, i=0, j=xid)
@@ -1526,31 +1514,21 @@ class MC_EXACT:
 
         sr_eff = self.effective_strain_rate_SSA(nn_input_var, nn_output_var)
 
-        eta = 0.5*B * sr_eff**((1/n)-1)
+        eta = 0.5 * sr_eff**((1/n)-1)
 
-        # eta = 0.5*B *(u_x**2.0 + v_y**2.0 + 0.25*(u_y+v_x)**2.0 + u_x*v_y + eps)**(0.5*(1.0-n)/n)
-        
         # stress tensor
         etaH = eta * H
-        # B11 = etaH*(4*u_x + 2*v_y)
         B22 = etaH*(4*v_y + 2*u_x)
         B12 = etaH*(  u_y +   v_x)
 
         # Getting the other derivatives
-        # sigma11 = jacobian(B11, nn_input_var, i=0, j=xid)
-        # sigma12 = jacobian(B12, nn_input_var, i=0, j=yid)
-
-        sigma21 = jacobian(B12, nn_input_var, i=0, j=xid)
-        sigma22 = jacobian(B22, nn_input_var, i=0, j=yid)
-
+        sigma21 = B * jacobian(B12, nn_input_var, i=0, j=xid).detach() + jacobian(B, nn_input_var, i=0, j=xid) * B12.detach()
+        sigma22 = B * jacobian(B22, nn_input_var, i=0, j=xid).detach() + jacobian(B, nn_input_var, i=0, j=yid) * B22.detach()
 
         # compute the basal stress
         alpha = C * (u_mag)**(1.0/m)
 
-        # f1 = sigma11 + sigma12 - alpha*u/(u_mag) - rho*g*H*sx
-        f2 = sigma21 + sigma22 - alpha*v/(u_mag) - rho*g*H*sy
-
-        # return (f1**2 + f2**2)**0.5
+        f2 = sigma21 + sigma22 - alpha.detach()*v.detach()/(u_mag.detach()) - rho*g*H.detach()*sy.detach()
         return f2
 
     def SSA_exact(self, nn_input_var, nn_output_var):
@@ -1581,7 +1559,6 @@ class MC_EXACT:
 
         sr_eff = self.effective_strain_rate_SSA(nn_input_var, nn_output_var)
 
-        # eta = 0.5*B * sr_eff**((1/n)-1)
         eta = 0.5 * sr_eff**((1/n)-1)
         # stress tensor
         etaH = eta * H
@@ -1590,12 +1567,6 @@ class MC_EXACT:
         B12 = etaH*(  u_y +   v_x)
 
         # Getting the other derivatives
-        # sigma11 = jacobian(B11, nn_input_var, i=0, j=xid)
-        # sigma12 = jacobian(B12, nn_input_var, i=0, j=yid)
-
-        # sigma21 = jacobian(B12, nn_input_var, i=0, j=xid)
-        # sigma22 = jacobian(B22, nn_input_var, i=0, j=yid)
-
         sigma11 = B * jacobian(B11, nn_input_var, i=0, j=xid).detach() + jacobian(B, nn_input_var, i=0, j=xid) * B11.detach()
         sigma12 = B * jacobian(B12, nn_input_var, i=0, j=xid).detach() + jacobian(B, nn_input_var, i=0, j=yid) * B12.detach()
 
