@@ -6,7 +6,7 @@ import pinnicle
 
 # General parameters
 hp = {}
-epochs = 100_000
+epochs = 700_000
 hp["epochs"] = epochs
 
 hp['loss_functions'] = []
@@ -31,7 +31,10 @@ hp["shapefile"] = "Helheim.exp"
 # hp["num_collocation_points"] = 0
 
 # physics
+SSA_sCB = {}
+SSA_sCB["scalar_variables"] = {'Bmin':1e7}
 hp["equations"] = {"MC_exact_Helmholtz":{},"SSA_sC":{}}
+# hp["equations"] = {"MC_exact_Helmholtz":{},"SSA_sCB":SSA_sCB}
 
 # data
 HELHEIM = {}
@@ -101,4 +104,6 @@ experiment.compile()
 
 # Train
 experiment.train()
-experiment.save_model(name=f'example1_MCexact_model_{epochs}')
+
+fname = f'example1_MCexact_model_sC_230826'
+experiment.save_model(name=fname)
