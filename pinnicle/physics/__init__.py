@@ -11,3 +11,4 @@ from .timeinvariant import *
 from .friction import *
 from .boundaryconditions import *
 from .physics_MCexact import *
+from .MCexact import *
