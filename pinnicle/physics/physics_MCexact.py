@@ -122,16 +122,16 @@ class MC_EXACT:
     def u_MC_pd(self, nn_input_var, nn_output_var, X):
         """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
         """
-        k = self.get_k(nn_input_var,nn_output_var)
+        ubr = self.get_ubar_ratio(nn_input_var,nn_output_var)
         ubar = self.Hu_to_ubar(nn_input_var,nn_output_var)
-        return ubar/k
+        return ubar/ubr
     
     def v_MC_pd(self, nn_input_var, nn_output_var, X):
         """ a wrapper for PointSetOperatorBC func call, Args need to follow the requirment by deepxde
         """
-        k = self.get_k(nn_input_var,nn_output_var)
+        ubr = self.get_ubar_ratio(nn_input_var,nn_output_var)
         vbar = self.Hv_to_vbar(nn_input_var,nn_output_var)
-        return vbar/k
+        return vbar/ubr
 
     def vel_mag_MC_pd(self, nn_input_var, nn_output_var, X):
         """ compute surface velocity magnitude (SSA)
@@ -358,24 +358,24 @@ class MC_EXACT:
         # return 1. + bkd.exp(n)
         # return n**2
     
-    def get_k(self, nn_input_var, nn_output_var):
+    def get_ubar_ratio(self, nn_input_var, nn_output_var):
             """ parameterised deformation for plug-flow:
-                u_bar = k*u_surf
+                u_bar = ubr*u_surf
                 p in [lb,1]
     
-                get k from nn_output
+                get ubr from nn_output
             """
-            k = self.p_to_range(nn_input_var,nn_output_var)
-            return k
+            ubr = self.ubr_to_range(nn_input_var,nn_output_var)
+            return ubr
     
-    def k_to_range(self, nn_input_var, nn_output_var):
+    def ubr_to_range(self, nn_input_var, nn_output_var):
         """ constrain k to [lb,1]
         """
         lb = 0.95
-        kid = self.output_var.index('k')
-        k1 = slice_column(nn_output_var, kid)
-        k = (1.0-lb) * bkd.sigmoid(k1) + lb # k in [lb,1]
-        return k
+        ubrid = self.output_var.index('ubar_ratio')
+        ubr1 = slice_column(nn_output_var, ubrid)
+        ubr = (1.0-lb) * bkd.sigmoid(ubr1) + lb # ubr in [lb,1]
+        return ubr
 
     def mf_mag(self, nn_input_var, nn_output_var,X):
         """ compute the mass flux magnitude
