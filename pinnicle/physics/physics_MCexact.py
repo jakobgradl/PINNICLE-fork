@@ -980,8 +980,8 @@ class MC_EXACT:
         """
         nid = self.output_var.index('n')
         n = slice_column(nn_output_var, nid)
-        a = 3 #self.equations[0].parameters.scalar_variables['nlb']
-        b = 18 #self.equations[0].parameters.scalar_variables['nub']
+        a = 0.001 # 3 #self.equations[0].parameters.scalar_variables['nlb']
+        b = 100 # 18 #self.equations[0].parameters.scalar_variables['nub']
         return (b-a) * bkd.sigmoid(n) + a
         # return 1. + bkd.exp(n)
         # return n**2
