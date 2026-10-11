@@ -41,8 +41,8 @@ class Constants():
         self.variable_ub['p'] = 4.
         self.variable_lb['n'] = 0.
         self.variable_ub['n'] = 2. # 4.6 (this for exp)
-        self.variable_lb['k'] = -2.5
-        self.variable_ub['k'] = 2.5
+        self.variable_lb['ubar_ratio'] = -2.5
+        self.variable_ub['ubar_ratio'] = 2.5
         self.variable_lb['Q_x'] = -1e3
         self.variable_ub['Q_x'] = 1e3
         self.variable_lb['Q_y'] = -1e3
