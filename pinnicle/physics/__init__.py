@@ -5,7 +5,10 @@ from .physics import *
 from .continuity import *
 from .dummy import *
 from .stressbalance import *
+from .stressbalance_MC import *
 from .iceshelf import *
 from .timeinvariant import *
 from .friction import *
 from .boundaryconditions import *
+from .physics_MCexact import *
+from .MCexact import *
