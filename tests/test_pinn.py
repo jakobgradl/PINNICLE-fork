@@ -261,7 +261,7 @@ def test_fft_training(tmp_path):
     hp_local["is_save"] = True
     hp_local["save_path"] = str(tmp_path)
     hp_local["num_collocation_points"] = 10
-    hp_local["space_sigma"] = [1.0, 10.0]
+    hp_local["sigma"] = [1.0, 10.0]
     issm["data_size"] = {"u":10, "v":10, "s":10, "H":10, "C":None}
     hp_local["data"] = {"ISSM": issm}
     hp_local["equations"] = {"SSA":SSA}
@@ -269,12 +269,12 @@ def test_fft_training(tmp_path):
     experiment = pinn.PINN(params=hp_local)
     experiment.save_setting(path=tmp_path)
     assert experiment.params.param_dict == experiment.load_setting(path=tmp_path)
-    assert experiment.params.nn.space_B is None
+    assert experiment.params.nn.B is None
     assert os.path.isdir(f"{tmp_path}/pinn/")
     experiment2 = pinn.PINN(loadFrom=tmp_path)
     assert experiment.params.param_dict == experiment2.params.param_dict
-    assert len(experiment2.params.nn.space_B) == 2
-    assert len(experiment2.params.nn.space_B[1]) == 20    
+    assert len(experiment2.params.nn.B) == 2
+    assert len(experiment2.params.nn.B[1]) == 20    
     assert experiment2.params.nn.num_layers == 4
     experiment.compile()
     experiment.train(iterations=10)
@@ -289,7 +289,7 @@ def test_fft_timedependent_training(tmp_path):
     hp_local["is_save"] = True
     hp_local["save_path"] = str(tmp_path)
     hp_local["num_collocation_points"] = 10
-    hp_local["space_sigma"] = [1.0, 10.0]
+    hp_local["sigma"] = [1.0, 10.0]
     hp_local["time_sigma"] = [1.0, 10.0]
     hp_local["start_time"] = 0
     hp_local["end_time"] = 1
@@ -300,13 +300,13 @@ def test_fft_timedependent_training(tmp_path):
     experiment = pinn.PINN(params=hp_local)
     experiment.save_setting(path=tmp_path)
     assert experiment.params.param_dict == experiment.load_setting(path=tmp_path)
-    assert experiment.params.nn.space_B is None
+    assert experiment.params.nn.B is None
     assert experiment.params.nn.time_B is None
     assert os.path.isdir(f"{tmp_path}/pinn/")
     experiment2 = pinn.PINN(loadFrom=tmp_path)
     assert experiment.params.param_dict == experiment2.params.param_dict
-    assert len(experiment2.params.nn.space_B) == 2
-    assert len(experiment2.params.nn.space_B[1]) == 20 
+    assert len(experiment2.params.nn.B) == 2
+    assert len(experiment2.params.nn.B[1]) == 20 
     assert len(experiment2.params.nn.time_B) == 1
     assert len(experiment2.params.nn.time_B[0]) == 20     
     assert experiment2.params.nn.num_layers == 4
@@ -386,6 +386,8 @@ def test_save_and_load_train(tmp_path):
     vel_loss['function'] = "VEL_LOG"
     vel_loss['weight'] = 1.0
     hp_local["additional_loss"] = {"vel":vel_loss, "sx":{"function":"MSE"},"sy":{"function":"MAE"}}
+    hp_local["manual_output_lb"] = {'s':5000}
+    hp_local["manual_output_ub"] = {'H':-10}
     experiment = pinn.PINN(params=hp_local)
     experiment.compile()
     experiment.train()
@@ -394,6 +396,12 @@ def test_save_and_load_train(tmp_path):
     experiment_load = pinn.PINN(params=hp_local)
     experiment_load.load_model(path=tmp_path, fileformat=extension)
     assert np.all(experiment_load.model.predict(experiment.model_data.X['u'])==experiment.model.predict(experiment.model_data.X['u']))
+    assert np.all([k in experiment_load.params.nn.output_variables for k in experiment_load.params.param_dict["manual_output_lb"].keys()])
+    assert np.all([k in experiment_load.params.nn.output_variables for k in experiment_load.params.param_dict["manual_output_ub"].keys()])
+    assert experiment_load.params.param_dict["manual_output_ub"]["H"] > -10
+    assert experiment_load.params.param_dict["manual_output_lb"]["s"] < 5000
+    # {'u': np.float64(-0.00031709791983764585), 'v': np.float64(-0.00031709791983764585), 's': np.float64(-1000.0), 'H': np.float64(-20.0), 'C': np.float64(1e-06)}
+    # {'u': np.float64(0.00031709791983764585), 'v': np.float64(0.00031709791983764585), 's': np.float64(3600.0), 'H': np.float64(1360.382674708082), 'C': np.float64(10000.0)}
 
 @pytest.mark.skipif(backend_name in ["jax"], reason="save model is not implemented in deepxde for jax")
 def test_train_with_callbacks(tmp_path):
