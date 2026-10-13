@@ -31,3 +31,12 @@ class Constants():
         self.variable_ub['u_base'] =  1.0e4/self.yts
         self.variable_lb['v_base'] = -1.0e4/self.yts
         self.variable_ub['v_base'] =  1.0e4/self.yts
+        self.variable_lb['D_dH'] = -1e3
+        self.variable_ub['D_dH'] = 1e3
+        self.variable_lb['D_smb'] = -1e3
+        self.variable_ub['D_smb'] = 1e3
+        self.variable_lb['R'] = -1e3
+        self.variable_ub['R'] = 1e3
+        self.variable_lb['Hexp'] = -2.
+        self.variable_ub['Hexp'] = 8.5
+       
